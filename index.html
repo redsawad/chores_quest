@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Family Chore Quest: Cloud Edition</title>
-    <!-- Tailwind CSS for modern styling -->
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React and ReactDOM -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -36,9 +36,8 @@
             30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
             40%, 60% { transform: translate3d(4px, 0, 0); }
         }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        /* Hide file input */
+        .hidden-input { display: none; }
     </style>
 </head>
 <body>
@@ -47,35 +46,46 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyCRGIPlCxYxyllCnpseWDMVzRR56WQoV-k",
-            authDomain: "chore-quest-8eda3.firebaseapp.com",
-            projectId: "chore-quest-8eda3",
-            storageBucket: "chore-quest-8eda3.firebasestorage.app",
-            messagingSenderId: "300249788118",
-            appId: "1:300249788118:web:f5b69443f250ae71b5e377",
-            measurementId: "G-MZSCRBFL0B"
+        // Safe extraction of environment variables
+        const getConfig = () => {
+            try {
+                return (typeof __firebase_config !== 'undefined' && __firebase_config) ? JSON.parse(__firebase_config) : null;
+            } catch (e) { return null; }
         };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = 'chore-quest-8eda3';
+        const config = getConfig();
+        if (config && config.apiKey) {
+            try {
+                const app = initializeApp(config);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'chore-quest-v7';
+                const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Expose to window for React code
-        window.FirebaseSDK = { 
-            auth, db, appId, 
-            doc, setDoc, onSnapshot, 
-            signInAnonymously, onAuthStateChanged 
-        };
+                // Expose to window for React code
+                window.FirebaseSDK = { 
+                    auth, db, appId, authToken, 
+                    doc, setDoc, onSnapshot, 
+                    signInAnonymously, signInWithCustomToken, onAuthStateChanged 
+                };
+            } catch (e) {
+                console.warn("Firebase initialization failed, falling back to local mode.");
+                window.FirebaseFallback = true;
+            }
+        } else {
+            console.warn("No Firebase config found, falling back to local mode.");
+            window.FirebaseFallback = true;
+        }
     </script>
 
     <!-- React Application Logic -->
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
+
+        const STORAGE_KEY = 'family_quest_v7_fallback';
 
         const ICON_LIBRARY = [
             "🧹", "👕", "🍽️", "🚽", "🌿", "🗑️", "🐕", "🐈", "📚", "🛌", 
@@ -83,31 +93,39 @@
             "⚔️", "🛡️", "👑", "💎", "📜", "🧪", "🔥", "❄️", "⚡", "✨"
         ];
 
+        // type: 'global' (competitive) or 'personal' (individual)
+        // days: array of integers 0-6 (Sun-Sat), empty = every day
         const DEFAULT_QUESTS = [
-            { id: 1, task: "Slay the Dust Bunnies", xp: 10, icon: "🧹", repeatable: true, cooldown: 1, assignedTo: null },
-            { id: 2, task: "The Great Laundry Fold", xp: 20, icon: "👕", repeatable: false, cooldown: 0, assignedTo: null },
+            { id: 1, task: "Slay the Dust Bunnies", xp: 10, icon: "🧹", repeatable: true, cooldown: 1, assignedTo: null, type: 'personal', days: [] },
+            { id: 2, task: "The Great Laundry Fold", xp: 20, icon: "👕", repeatable: false, cooldown: 0, assignedTo: null, type: 'global', days: [] },
         ];
 
         const DEFAULT_REWARDS = [
             { id: 1, title: "Pick the Friday Movie", level: 2, type: "primary", interval: 0 },
             { id: 2, title: "Extra 15m Screen Time", level: 2, type: "secondary", interval: 0 },
-            { id: 3, title: "Small Toy Chest Visit", level: 4, type: "interval", interval: 2 },
+            { id: 3, title: "Stay Up 30m Late", level: 3, type: "primary", interval: 0 },
+            { id: 4, title: "Small Toy Chest Visit", level: 4, type: "interval", interval: 2 },
         ];
 
         const DEFAULT_USERS = [
-            { id: 'u1', name: "Player 1", passcode: "0000", totalXP: 0, level: 1, completedIds: [], pendingIds: [], cooldowns: {}, claimedRewards: [], fulfilledRewards: [] }
+            { id: 'u1', name: "Player 1", passcode: "0000", totalXP: 0, level: 1, completedIds: [], pendingIds: [], cooldowns: {}, claimedRewards: [], fulfilledRewards: [], forceActiveIds: [] }
         ];
 
+        // Safe Lucide Icon Component
         const Icon = ({ name, size = 20, className = "" }) => {
             useEffect(() => {
-                if (window.lucide) window.lucide.createIcons();
+                if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                    window.lucide.createIcons();
+                }
             });
             return <i data-lucide={name} className={className} style={{width: size, height: size, display: 'inline-block'}}></i>;
         };
 
         const App = () => {
             const [sdkReady, setSdkReady] = useState(false);
+            const [isLocalMode, setIsLocalMode] = useState(false);
             const [user, setUser] = useState(null);
+            
             const [users, setUsers] = useState(DEFAULT_USERS);
             const [quests, setQuests] = useState(DEFAULT_QUESTS);
             const [rewards, setRewards] = useState(DEFAULT_REWARDS);
@@ -122,52 +140,94 @@
             const [pinError, setPinError] = useState(false);
             const [isSettingNewPin, setIsSettingNewPin] = useState(false);
 
-            const [newQuest, setNewQuest] = useState({ task: "", xp: 20, cooldown: 1, repeatable: false, assignedTo: null, icon: "✨" });
+            const [newQuest, setNewQuest] = useState({ task: "", xp: 20, cooldown: 1, repeatable: false, assignedTo: null, icon: "✨", type: 'personal', days: [] });
             const [editingQuestId, setEditingQuestId] = useState(null);
             const [newReward, setNewReward] = useState({ title: "", level: 2, type: "primary", interval: 2 });
             const [editingRewardId, setEditingRewardId] = useState(null);
+            const [showAllQuests, setShowAllQuests] = useState(false); // Toggle for Today vs All
+            const [newUser, setNewUser] = useState("");
             
             const [showCelebration, setShowCelebration] = useState(false);
             const [now, setNow] = useState(Date.now());
             const [isSyncing, setIsSyncing] = useState(false);
 
+            const questsFileInputRef = useRef(null);
+            const rewardsFileInputRef = useRef(null);
+
             const xpToLevel = 100;
 
+            // Wait for SDK or Fallback
             useEffect(() => {
-                const checkSdk = setInterval(() => {
+                const checkStatus = setInterval(() => {
                     if (window.FirebaseSDK) {
                         setSdkReady(true);
-                        clearInterval(checkSdk);
+                        setIsLocalMode(false);
+                        clearInterval(checkStatus);
+                    } else if (window.FirebaseFallback) {
+                        setSdkReady(true);
+                        setIsLocalMode(true);
+                        clearInterval(checkStatus);
                     }
                 }, 100);
-                return () => clearInterval(checkSdk);
+                return () => clearInterval(checkStatus);
             }, []);
 
+            // 1. Initial Auth (Cloud Only)
+            useEffect(() => {
+                if (!sdkReady || isLocalMode) return;
+                const { auth, authToken, signInWithCustomToken, signInAnonymously, onAuthStateChanged } = window.FirebaseSDK;
+                
+                const initAuth = async () => {
+                    try {
+                        if (authToken) {
+                            await signInWithCustomToken(auth, authToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (e) { console.error("Auth failed:", e); }
+                };
+                initAuth();
+                return onAuthStateChanged(auth, setUser);
+            }, [sdkReady, isLocalMode]);
+
+            // 2. Data Sync
             useEffect(() => {
                 if (!sdkReady) return;
-                const { auth, signInAnonymously, onAuthStateChanged } = window.FirebaseSDK;
-                signInAnonymously(auth).catch(e => console.error("Auth failed", e));
-                return onAuthStateChanged(auth, setUser);
-            }, [sdkReady]);
 
-            useEffect(() => {
-                if (!sdkReady || !user) return;
-                const { db, appId, doc, onSnapshot } = window.FirebaseSDK;
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'current');
-                
-                const unsubscribe = onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const data = docSnap.data();
-                        setUsers(data.users || DEFAULT_USERS);
+                if (isLocalMode) {
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        const migrationUsers = (data.users || DEFAULT_USERS).map(u => ({
+                            ...u,
+                            forceActiveIds: u.forceActiveIds || []
+                        }));
+                        setUsers(migrationUsers);
                         setQuests(data.quests || DEFAULT_QUESTS);
                         setRewards(data.rewards || DEFAULT_REWARDS);
                         setParentPin(data.parentPin || '1234');
-                    } else {
-                        saveGameState(DEFAULT_USERS, DEFAULT_QUESTS, DEFAULT_REWARDS, '1234');
                     }
-                }, (err) => console.error("Sync Error:", err));
-                return () => unsubscribe();
-            }, [sdkReady, user]);
+                } else if (user) {
+                    const { db, appId, doc, onSnapshot } = window.FirebaseSDK;
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'current');
+                    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            const data = docSnap.data();
+                            const migrationUsers = (data.users || DEFAULT_USERS).map(u => ({
+                                ...u,
+                                forceActiveIds: u.forceActiveIds || []
+                            }));
+                            setUsers(migrationUsers);
+                            setQuests(data.quests || DEFAULT_QUESTS);
+                            setRewards(data.rewards || DEFAULT_REWARDS);
+                            setParentPin(data.parentPin || '1234');
+                        } else {
+                            saveGameState(DEFAULT_USERS, DEFAULT_QUESTS, DEFAULT_REWARDS, '1234');
+                        }
+                    }, (err) => console.error("Sync Error:", err));
+                    return () => unsubscribe();
+                }
+            }, [sdkReady, isLocalMode, user]);
 
             useEffect(() => {
                 const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -175,18 +235,114 @@
             }, []);
 
             const saveGameState = async (u, q, r, p) => {
-                if (!window.FirebaseSDK || !user) return;
-                const { db, appId, doc, setDoc } = window.FirebaseSDK;
-                setIsSyncing(true);
-                try {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'current'), {
+                if (!sdkReady) return;
+                
+                if (isLocalMode) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({
                         users: u, quests: q, rewards: r, parentPin: p, lastUpdated: Date.now()
-                    });
-                } catch (err) { console.error("Save Error:", err); }
-                finally { setIsSyncing(false); }
+                    }));
+                } else if (user) {
+                    const { db, appId, doc, setDoc } = window.FirebaseSDK;
+                    setIsSyncing(true);
+                    try {
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'current'), {
+                            users: u, quests: q, rewards: r, parentPin: p, lastUpdated: Date.now()
+                        });
+                    } catch (err) {
+                        console.error("Save Error:", err);
+                    } finally {
+                        setIsSyncing(false);
+                    }
+                }
             };
 
             const activeUser = users.find(u => u.id === activeUserId) || users[0];
+
+            // --- CSV Handlers ---
+            const downloadCSV = (content, filename) => {
+                const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const exportQuestsCSV = () => {
+                const headers = ["id", "task", "xp", "icon", "repeatable", "cooldown", "assignedTo", "type", "days"];
+                const rows = quests.map(q => [
+                    q.id, `"${q.task}"`, q.xp, q.icon, q.repeatable, q.cooldown, q.assignedTo || "", q.type || "personal", `"${(q.days || []).join(',')}"`
+                ]);
+                const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                downloadCSV(csvContent, 'quests_export.csv');
+            };
+
+            const exportRewardsCSV = () => {
+                const headers = ["id", "title", "level", "type", "interval"];
+                const rows = rewards.map(r => [
+                    r.id, `"${r.title}"`, r.level, r.type, r.interval
+                ]);
+                const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                downloadCSV(csvContent, 'rewards_export.csv');
+            };
+
+            const importQuestsCSV = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const text = evt.target.result;
+                    const lines = text.split('\n').slice(1); // Skip header
+                    const newQuests = lines.filter(l => l.trim()).map(line => {
+                        // Simple CSV parse handling commas in quotes
+                        const parts = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+                        const cleanParts = parts.map(p => p.replace(/^"|"$/g, '').trim());
+                        // Fallback parsing if regex fails on simple split
+                        const simpleParts = line.split(',');
+                        const p = cleanParts.length >= 8 ? cleanParts : simpleParts;
+                        
+                        return {
+                            id: Number(p[0]) || Date.now(),
+                            task: p[1],
+                            xp: Number(p[2]),
+                            icon: p[3],
+                            repeatable: p[4] === 'true',
+                            cooldown: Number(p[5]),
+                            assignedTo: p[6] === "" ? null : p[6],
+                            type: p[7] || 'personal',
+                            days: p[8] ? p[8].split(',').map(Number).filter(n => !isNaN(n)) : []
+                        };
+                    });
+                    setQuests(newQuests);
+                    saveGameState(users, newQuests, rewards, parentPin);
+                };
+                reader.readAsText(file);
+            };
+
+            const importRewardsCSV = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    const text = evt.target.result;
+                    const lines = text.split('\n').slice(1);
+                    const newRewards = lines.filter(l => l.trim()).map(line => {
+                        const parts = line.split(',');
+                        return {
+                            id: Number(parts[0]) || Date.now(),
+                            title: parts[1].replace(/"/g, ''),
+                            level: Number(parts[2]),
+                            type: parts[3],
+                            interval: Number(parts[4])
+                        };
+                    });
+                    setRewards(newRewards);
+                    saveGameState(users, quests, newRewards, parentPin);
+                };
+                reader.readAsText(file);
+            };
 
             // --- Handlers ---
             const addOrUpdateQuest = (e) => {
@@ -200,8 +356,13 @@
                     updatedQuests = [...quests, { ...newQuest, id: Date.now() }];
                 }
                 setQuests(updatedQuests);
-                setNewQuest({ task: "", xp: 20, cooldown: 1, repeatable: false, assignedTo: null, icon: "✨" });
+                setNewQuest({ task: "", xp: 20, cooldown: 1, repeatable: false, assignedTo: null, icon: "✨", type: 'personal', days: [] });
                 saveGameState(users, updatedQuests, rewards, parentPin);
+            };
+
+            const editQuest = (quest) => {
+                setEditingQuestId(quest.id);
+                setNewQuest({ ...quest });
             };
 
             const addOrUpdateReward = (e) => {
@@ -219,10 +380,17 @@
                 saveGameState(users, quests, updatedRewards, parentPin);
             };
 
+            const editReward = (reward) => {
+                setEditingRewardId(reward.id);
+                setNewReward({ ...reward });
+            };
+
             const handleParentModeToggle = () => {
                 if (isParentMode) {
                     setIsParentMode(false);
                     setIsSettingNewPin(false);
+                    setEditingQuestId(null);
+                    setEditingRewardId(null);
                 } else {
                     setShowPinModal(true);
                     setPinInput("");
@@ -265,6 +433,24 @@
                 }
             };
 
+            const changePin = (e) => {
+                e.preventDefault();
+                if (pinInput.length >= 4) {
+                    const newPin = pinInput;
+                    setParentPin(newPin);
+                    setIsSettingNewPin(false);
+                    setPinInput("");
+                    saveGameState(users, quests, rewards, newPin);
+                }
+            };
+
+            const changeUserPasscode = (userId, newCode) => {
+                if (newCode.length < 1) return;
+                const updated = users.map(u => u.id === userId ? { ...u, passcode: newCode } : u);
+                setUsers(updated);
+                saveGameState(updated, quests, rewards, parentPin);
+            };
+
             const updatePlayerStats = (userId, field, value) => {
                 const numVal = parseInt(value) || 0;
                 const updated = users.map(u => u.id === userId ? { ...u, [field]: numVal } : u);
@@ -304,6 +490,14 @@
                 if (newLevel > targetUser.level && userId === activeUserId) setShowCelebration(true);
             };
 
+            const denyQuest = (userId, questId) => {
+                const updatedUsers = users.map(u => u.id === userId ? {
+                    ...u, pendingIds: (u.pendingIds || []).filter(id => id !== questId)
+                } : u);
+                setUsers(updatedUsers);
+                saveGameState(updatedUsers, quests, rewards, parentPin);
+            };
+
             const reactivateQuest = (userId, questId) => {
                 const updatedUsers = users.map(u => u.id === userId ? {
                     ...u, completedIds: (u.completedIds || []).filter(id => id !== questId)
@@ -325,6 +519,22 @@
                 saveGameState(updatedUsers, quests, rewards, parentPin);
             };
 
+            // Toggle "Force Show" for a quest for the active user (Parent Mode only)
+            const toggleForceActive = (userId, questId) => {
+                const updatedUsers = users.map(u => {
+                    if (u.id === userId) {
+                        const currentForces = u.forceActiveIds || [];
+                        const newForces = currentForces.includes(questId) 
+                            ? currentForces.filter(id => id !== questId) 
+                            : [...currentForces, questId];
+                        return { ...u, forceActiveIds: newForces };
+                    }
+                    return u;
+                });
+                setUsers(updatedUsers);
+                saveGameState(updatedUsers, quests, rewards, parentPin);
+            };
+
             const claimReward = (rewardId) => {
                 const updatedUsers = users.map(u => u.id === activeUserId ? {
                     ...u, claimedRewards: [...(u.claimedRewards || []), rewardId]
@@ -336,9 +546,10 @@
             const fulfillReward = (userId, rewardId) => {
                 const updatedUsers = users.map(u => {
                     if (u.id === userId) {
-                        const index = (u.claimedRewards || []).indexOf(rewardId);
+                        const currentClaimed = u.claimedRewards || [];
+                        const index = currentClaimed.indexOf(rewardId);
                         if (index > -1) {
-                            const newClaimed = [...u.claimedRewards];
+                            const newClaimed = [...currentClaimed];
                             newClaimed.splice(index, 1);
                             return { ...u, claimedRewards: newClaimed, fulfilledRewards: [...(u.fulfilledRewards || []), rewardId] };
                         }
@@ -347,6 +558,25 @@
                 });
                 setUsers(updatedUsers);
                 saveGameState(updatedUsers, quests, rewards, parentPin);
+            };
+
+            const deleteQuest = (id) => {
+                const qList = quests.filter(x=>x.id !== id);
+                setQuests(qList); saveGameState(users, qList, rewards, parentPin);
+            };
+
+            const deleteReward = (id) => {
+                const rList = rewards.filter(x=>x.id !== id);
+                setRewards(rList); saveGameState(users, quests, rList, parentPin);
+            };
+
+            const addUser = (e) => {
+                e.preventDefault();
+                if (!newUser.trim()) return;
+                const id = 'u' + Date.now();
+                const u = [...users, { id, name: newUser, passcode: "0000", totalXP: 0, level: 1, completedIds: [], pendingIds: [], cooldowns: {}, claimedRewards: [], fulfilledRewards: [], forceActiveIds: [] }];
+                setUsers(u); saveGameState(u, quests, rewards, parentPin);
+                setNewUser("");
             };
 
             const formatCooldown = (cdTime) => {
@@ -358,9 +588,19 @@
                 return days > 0 ? `${days}d ${hours}h` : hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
             };
 
+            const toggleDay = (dayIndex) => {
+                const currentDays = newQuest.days || [];
+                if (currentDays.includes(dayIndex)) {
+                    setNewQuest({...newQuest, days: currentDays.filter(d => d !== dayIndex)});
+                } else {
+                    setNewQuest({...newQuest, days: [...currentDays, dayIndex]});
+                }
+            };
+
             if (!sdkReady) return <div className="min-h-screen bg-slate-900 flex items-center justify-center font-black text-slate-700 tracking-[0.2em] uppercase italic text-center px-8">Initializing Kingdom...</div>;
             
-            const appId = window.FirebaseSDK?.appId || 'chore-quest-8eda3';
+            const currentAppId = window.FirebaseSDK?.appId || 'Local-Only-Mode';
+            const currentDayIndex = new Date(now).getDay();
 
             return (
                 <div className="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8 font-sans">
@@ -378,7 +618,7 @@
 
                     {(showPinModal || showPlayerUnlockModal) && (
                         <div className="fixed inset-0 flex items-center justify-center z-[70] bg-slate-950/90 backdrop-blur-md">
-                            <div className={`bg-slate-800 p-8 rounded-[2rem] border-2 shadow-2xl w-full max-w-sm modal-enter ${pinError ? 'border-red-500 animate-shake' : 'border-slate-700'}`}>
+                            <div className={`bg-slate-800 p-8 rounded-[2rem] border-2 shadow-2xl w-full max-sm:max-w-full max-w-sm modal-enter ${pinError ? 'border-red-500 animate-shake' : 'border-slate-700'}`}>
                                 <div className="text-center mb-6">
                                     <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-yellow-500">
                                         <Icon name="lock" size={32} />
@@ -388,8 +628,8 @@
                                 <form onSubmit={showPinModal ? verifyPin : verifyPlayerPasscode} className="space-y-4">
                                     <input autoFocus type="password" value={pinInput} onChange={e=>setPinInput(e.target.value)} placeholder="••••" className="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl py-4 text-center text-3xl tracking-[1em] font-black text-yellow-500 outline-none focus:border-yellow-500 transition-colors" />
                                     <div className="flex gap-3">
-                                        <button type="button" onClick={()=>{setShowPinModal(false); setShowPlayerUnlockModal(false);}} className="flex-1 bg-slate-700 font-bold py-3 rounded-xl hover:bg-slate-600 transition-colors">Back</button>
-                                        <button type="submit" className="flex-1 bg-yellow-500 text-slate-900 font-black py-3 rounded-xl hover:bg-yellow-400 transition-colors">Unlock</button>
+                                        <button type="button" onClick={()=>{setShowPinModal(false); setShowPlayerUnlockModal(false);}} className="flex-1 bg-slate-700 font-bold py-3 rounded-xl hover:bg-slate-600">Back</button>
+                                        <button type="submit" className="flex-1 bg-yellow-500 text-slate-900 font-black py-3 rounded-xl hover:bg-yellow-400">Unlock</button>
                                     </div>
                                 </form>
                             </div>
@@ -407,20 +647,17 @@
                             </button>
                         </header>
 
-                        <div className="flex flex-wrap gap-2 mb-8 bg-slate-800/40 p-2 rounded-2xl border border-slate-800 shadow-inner">
+                        <div className="flex flex-wrap gap-2 mb-8 bg-slate-800/40 p-2 rounded-2xl border border-slate-800">
                             {users.map(u => (
                                 <button key={u.id} onClick={() => handlePlayerSwitchRequest(u.id)} className={`px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all font-bold ${activeUserId === u.id ? 'bg-yellow-500 text-slate-900 shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
                                     {u.name} {(u.pendingIds || []).length > 0 && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
                                 </button>
                             ))}
                             {isParentMode && (
-                                <button onClick={() => {
-                                    const name = prompt("Enter new player name:");
-                                    if(name) {
-                                        const uList = [...users, { id: 'u'+Date.now(), name, passcode: "0000", totalXP: 0, level: 1, completedIds: [], pendingIds: [], cooldowns: {}, claimedRewards: [], fulfilledRewards: [] }];
-                                        setUsers(uList); saveGameState(uList, quests, rewards, parentPin);
-                                    }
-                                }} className="p-2.5 rounded-xl bg-emerald-600 text-white shadow-lg hover:bg-emerald-500 transition-colors"><Icon name="plus" size={18}/></button>
+                                <form onSubmit={addUser} className="flex gap-2 ml-auto p-1">
+                                    <input className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1 text-xs focus:ring-1 focus:ring-yellow-500 outline-none font-bold text-white w-24 md:w-32" placeholder="Add Player..." value={newUser} onChange={(e) => setNewUser(e.target.value)} />
+                                    <button className="bg-emerald-600 hover:bg-emerald-500 p-1.5 rounded-lg text-white"><Icon name="plus" size={18}/></button>
+                                </form>
                             )}
                         </div>
 
@@ -455,36 +692,74 @@
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             <div className="lg:col-span-2 space-y-4">
-                                <h2 className="text-sm font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2 px-2 tracking-widest"><Icon name="layout-list" size={16}/> Mission Log</h2>
-                                {quests.filter(q => q.assignedTo === null || q.assignedTo === activeUser.id).map(quest => {
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-sm font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2 px-2 tracking-widest"><Icon name="layout-list" size={16}/> Mission Log</h2>
+                                    <div className="flex bg-slate-800 rounded-lg p-1">
+                                        <button onClick={()=>setShowAllQuests(false)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${!showAllQuests ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>Today</button>
+                                        <button onClick={()=>setShowAllQuests(true)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${showAllQuests ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>All</button>
+                                    </div>
+                                </div>
+                                {quests.filter(q => {
+                                    // 1. Filter by User Assignment
+                                    if (q.assignedTo && q.assignedTo !== activeUser.id) return false;
+                                    // 2. Filter by Day (if in "Today" mode), unless Force Active
+                                    const isForceActive = (activeUser.forceActiveIds || []).includes(q.id);
+                                    if (!showAllQuests && !isForceActive && q.days && q.days.length > 0 && !q.days.includes(currentDayIndex)) return false;
+                                    return true;
+                                }).map(quest => {
                                     const isPending = (activeUser.pendingIds || []).includes(quest.id);
                                     const isDone = (activeUser.completedIds || []).includes(quest.id);
                                     const cdTime = activeUser.cooldowns?.[quest.id] || 0;
                                     const isOnCooldown = quest.repeatable && now < cdTime;
-                                    const otherCompleter = users.find(u => u.id !== activeUser.id && (u.completedIds || []).includes(quest.id));
-                                    const lockedByOther = otherCompleter && !quest.repeatable;
+                                    const isForceActive = (activeUser.forceActiveIds || []).includes(quest.id);
+                                    
+                                    // Check Global Completion
+                                    const globalCompleter = quest.type === 'global' 
+                                        ? users.find(u => (u.completedIds || []).includes(quest.id) || (u.pendingIds || []).includes(quest.id)) 
+                                        : null;
+                                        
+                                    const isLockedGlobally = globalCompleter && globalCompleter.id !== activeUser.id;
+                                    const lockedByOther = isLockedGlobally && !quest.repeatable;
 
                                     return (
-                                        <div key={quest.id} className={`p-5 rounded-3xl border-2 transition-all flex items-center gap-4 ${isPending ? 'bg-yellow-500/5 border-yellow-500/40 animate-pulse' : lockedByOther ? 'opacity-40 grayscale pointer-events-none bg-slate-950 border-slate-800' : isOnCooldown ? 'opacity-70 grayscale bg-slate-800/50' : 'bg-slate-800 border-slate-700 shadow-xl'}`}>
+                                        <div key={quest.id} className={`p-5 rounded-3xl border-2 transition-all flex items-center gap-4 ${isPending ? 'bg-yellow-500/5 border-yellow-500/40 animate-pulse' : lockedByOther ? `opacity-40 grayscale bg-slate-950 border-slate-800 ${isParentMode ? '' : 'pointer-events-none'}` : isOnCooldown ? 'opacity-70 grayscale bg-slate-800/50' : 'bg-slate-800 border-slate-700 shadow-xl'}`}>
                                             <div className="text-4xl filter drop-shadow-sm">{quest.icon}</div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className={`font-black text-xl tracking-tight text-white truncate ${lockedByOther ? 'line-through text-slate-600' : ''}`}>{quest.task}</h3>
+                                            <div className="flex-1">
+                                                <h3 className={`font-black text-xl tracking-tight text-white truncate ${lockedByOther ? 'line-through text-slate-600' : ''}`}>{quest.task} {isForceActive && <span className="text-[10px] text-yellow-500 uppercase tracking-wider ml-2">Override Active</span>}</h3>
                                                 <div className="flex flex-wrap gap-2 mt-1">
                                                     <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase bg-yellow-500/10 text-yellow-500">+{quest.xp} XP</span>
                                                     {isOnCooldown && <span className="text-[10px] font-black text-red-400 uppercase italic">Cooldown: {formatCooldown(cdTime)}</span>}
-                                                    {lockedByOther && <span className="text-[10px] font-black text-slate-500 uppercase italic">By {otherCompleter.name}</span>}
+                                                    {lockedByOther && <span className="text-[10px] font-black text-slate-500 uppercase italic">By {globalCompleter?.name}</span>}
+                                                    {quest.type === 'global' && <span className="text-[10px] font-black text-orange-400 uppercase italic">Competitive</span>}
                                                 </div>
                                             </div>
                                             <div className="flex gap-2">
                                                 {isParentMode ? (
                                                     <div className="flex gap-1">
-                                                        {isDone && !quest.repeatable && <button onClick={()=>reactivateQuest(activeUser.id, quest.id)} className="p-3 bg-emerald-600/20 text-emerald-500 rounded-xl hover:bg-emerald-600/30 transition-colors"><Icon name="zap" size={16}/></button>}
-                                                        {isOnCooldown && <button onClick={()=>resetCooldown(activeUser.id, quest.id)} className="p-3 bg-blue-600/20 text-blue-500 rounded-xl hover:bg-blue-600/30 transition-colors"><Icon name="rotate-ccw" size={16}/></button>}
+                                                        {(isDone || lockedByOther) && !quest.repeatable && (
+                                                            <button 
+                                                                onClick={() => reactivateQuest(globalCompleter ? globalCompleter.id : activeUser.id, quest.id)} 
+                                                                className="p-3 bg-emerald-600/20 text-emerald-500 rounded-xl hover:bg-emerald-600/30 transition-colors" 
+                                                                title={lockedByOther ? `Reactivate (Done by ${globalCompleter?.name})` : "Reactivate"}
+                                                            >
+                                                                <Icon name="zap" size={16}/>
+                                                            </button>
+                                                        )}
+                                                        {isOnCooldown && <button onClick={()=>resetCooldown(activeUser.id, quest.id)} className="p-3 bg-blue-600/20 text-blue-500 rounded-xl hover:bg-blue-600/30 transition-colors" title="Reset Cooldown"><Icon name="rotate-ccw" size={16}/></button>}
+                                                        
+                                                        {/* Force Active Toggle */}
+                                                        {(!quest.days || quest.days.length > 0) && (
+                                                            <button 
+                                                                onClick={()=>toggleForceActive(activeUser.id, quest.id)} 
+                                                                className={`p-3 rounded-xl transition-colors ${isForceActive ? 'bg-yellow-500 text-slate-900' : 'bg-slate-700 text-slate-400 hover:text-white'}`}
+                                                                title="Toggle Override Schedule"
+                                                            >
+                                                                <Icon name={isForceActive ? "eye" : "eye-off"} size={16}/>
+                                                            </button>
+                                                        )}
+
                                                         <button onClick={()=>editQuest(quest)} className="p-3 bg-yellow-600/20 text-yellow-500 rounded-xl hover:bg-yellow-600/30 transition-colors"><Icon name="edit" size={16}/></button>
-                                                        <button onClick={()=>{
-                                                            const qL = quests.filter(x=>x.id !== quest.id);
-                                                            setQuests(qL); saveGameState(users, qL, rewards, parentPin);
-                                                        }} className="p-3 bg-red-600/20 text-red-500 rounded-xl hover:bg-red-600/30 transition-colors"><Icon name="trash-2" size={16}/></button>
+                                                        <button onClick={()=>deleteQuest(quest.id)} className="p-3 bg-red-600/20 text-red-500 rounded-xl hover:bg-red-600/30 transition-colors"><Icon name="trash-2" size={16}/></button>
                                                     </div>
                                                 ) : (
                                                     <button disabled={isPending || isOnCooldown || isDone || lockedByOther} onClick={() => submitForApproval(quest.id)} className={`min-w-[90px] p-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all shadow-lg ${isPending ? 'bg-yellow-500 text-slate-900' : isDone ? 'bg-emerald-600 text-white' : isOnCooldown ? 'bg-slate-700 text-slate-500' : 'bg-slate-700 text-white hover:bg-slate-600 active:scale-95'}`}>
@@ -502,13 +777,18 @@
                                 {rewards.sort((a,b)=>a.level-b.level).map(reward => {
                                     const unlocked = activeUser.level >= reward.level;
                                     const allClaimedAndFulfilled = [...(activeUser.claimedRewards || []), ...(activeUser.fulfilledRewards || [])];
+                                    
                                     const usedCount = allClaimedAndFulfilled.filter(rid => rid === reward.id).length;
-                                    const totalAvailable = (reward.type === 'interval' && activeUser.level >= reward.level) ? Math.floor((activeUser.level - reward.level) / reward.interval) + 1 : 1;
+                                    const totalAvailable = (reward.type === 'interval' && activeUser.level >= reward.level) 
+                                        ? Math.floor((activeUser.level - reward.level) / reward.interval) + 1 
+                                        : 1;
                                     const chargesLeft = Math.max(0, totalAvailable - usedCount);
+                                    
                                     const primaryUsedAtThisLevel = reward.type === 'primary' && allClaimedAndFulfilled.some(rid => {
                                         const r = rewards.find(x => x.id === rid);
                                         return r && r.type === 'primary' && r.level === reward.level;
                                     });
+
                                     const claimed = reward.type !== 'interval' && allClaimedAndFulfilled.includes(reward.id);
                                     const disabled = !unlocked || claimed || (reward.type === 'primary' && primaryUsedAtThisLevel) || (reward.type === 'interval' && chargesLeft === 0);
 
@@ -522,10 +802,7 @@
                                             {isParentMode ? (
                                                 <div className="flex gap-1">
                                                     <button onClick={()=>editReward(reward)} className="flex-1 py-1.5 bg-yellow-500/10 text-yellow-500 rounded-lg text-[10px] font-black uppercase border border-yellow-500/20 hover:bg-yellow-500/20 transition-all">Edit</button>
-                                                    <button onClick={()=>{
-                                                        const rL = rewards.filter(x=>x.id !== reward.id);
-                                                        setRewards(rL); saveGameState(users, quests, rL, parentPin);
-                                                    }} className="flex-1 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-500/20 transition-all">Del</button>
+                                                    <button onClick={()=>deleteReward(reward.id)} className="flex-1 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-500/20 transition-all">Del</button>
                                                 </div>
                                             ) : (
                                                 <button disabled={disabled} onClick={() => claimReward(reward.id)} className={`w-full py-2.5 rounded-xl text-[10px] font-black uppercase transition-all shadow-md ${claimed ? 'bg-emerald-600/20 text-emerald-500 border border-emerald-500/30' : unlocked && !disabled ? 'bg-yellow-500 text-slate-900 shadow-yellow-500/20 hover:bg-yellow-400 active:scale-95' : 'bg-slate-700 text-slate-500 cursor-not-allowed'}`}>
@@ -554,6 +831,7 @@
                                                     </div>
                                                     <div className="flex gap-2">
                                                         <button onClick={() => approveQuest(item.u.id, item.q.id)} className="p-2.5 bg-emerald-600 rounded-lg text-white shadow-lg hover:bg-emerald-500 transition-colors"><Icon name="check-circle" size={18}/></button>
+                                                        <button onClick={() => denyQuest(item.u.id, item.q.id)} className="p-2.5 bg-red-600 rounded-lg text-white shadow-lg hover:bg-red-500 transition-colors" title="Deny & Reset"><Icon name="x" size={18}/></button>
                                                     </div>
                                                 </div>
                                             ))}
@@ -569,7 +847,7 @@
                                                     <button onClick={() => fulfillReward(item.u.id, item.r.id)} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase shadow-lg hover:bg-blue-500 transition-colors">Fulfill</button>
                                                 </div>
                                             ))}
-                                            {users.every(u => !u.claimedRewards || u.claimedRewards.length === 0) && <p className="text-xs italic text-slate-500 px-1">No loot pending.</p>}
+                                            {users.every(u => !u.claimedRewards || u.claimedRewards.length === 0) && <p className="text-xs italic text-slate-500 px-1">No loot to fulfill.</p>}
                                         </div>
                                     </div>
                                 </div>
@@ -586,6 +864,16 @@
                                                 ))}
                                             </div>
                                         </div>
+                                        <div>
+                                            <label className="text-[10px] font-black text-slate-500 uppercase block mb-3 px-2 tracking-[0.2em]">Schedule Days (Blue = Active)</label>
+                                            <div className="flex gap-2">
+                                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => (
+                                                    <button type="button" key={d} onClick={()=>toggleDay(i)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all ${newQuest.days && newQuest.days.includes(i) ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}>
+                                                        {d}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                             <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center shadow-inner">
                                                 <label className="text-[9px] font-black uppercase text-slate-500 block mb-1 tracking-widest">XP Reward</label>
@@ -596,10 +884,10 @@
                                                 <input type="number" step="0.1" value={newQuest.cooldown} onChange={e=>setNewQuest({...newQuest, cooldown: parseFloat(e.target.value)||0})} className="bg-transparent w-full text-center font-black text-xl outline-none text-blue-400" />
                                             </div>
                                             <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center shadow-inner">
-                                                <label className="text-[9px] font-black uppercase text-slate-500 block mb-1 tracking-widest">Assigned Player</label>
-                                                <select value={newQuest.assignedTo||""} onChange={e=>setNewQuest({...newQuest, assignedTo: e.target.value===""?null:e.target.value})} className="bg-transparent w-full text-center font-black text-xs outline-none uppercase appearance-none text-purple-400 cursor-pointer">
-                                                    <option value="" className="bg-slate-800">Everyone</option>
-                                                    {users.map(u => <option key={u.id} value={u.id} className="bg-slate-800">{u.name}</option>)}
+                                                <label className="text-[9px] font-black uppercase text-slate-500 block mb-1 tracking-widest">Completion Type</label>
+                                                <select value={newQuest.type||'personal'} onChange={e=>setNewQuest({...newQuest, type: e.target.value})} className="bg-transparent w-full text-center font-black text-xs outline-none uppercase appearance-none text-orange-400 cursor-pointer">
+                                                    <option value="personal" className="bg-slate-800">Personal (Everyone)</option>
+                                                    <option value="global" className="bg-slate-800">Competitive (First Only)</option>
                                                 </select>
                                             </div>
                                             <button type="button" onClick={()=>setNewQuest({...newQuest, repeatable: !newQuest.repeatable})} className={`p-3 rounded-xl border font-black uppercase text-[10px] transition-all shadow-md ${newQuest.repeatable ? 'bg-blue-600 border-blue-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300'}`}>
@@ -636,7 +924,7 @@
                                 </div>
 
                                 <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-700 shadow-xl">
-                                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] mb-6 flex items-center gap-2 px-1"><Icon name="settings" size={14}/> System Security</h4>
+                                    <h4 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] mb-6 flex items-center gap-2 px-1"><Icon name="settings" size={14}/> System Security & Data</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-inner">
                                             <label className="text-[9px] font-black text-slate-500 uppercase block mb-3 tracking-widest text-slate-500">Admin Master PIN</label>
@@ -644,7 +932,7 @@
                                                 <button onClick={()=>setIsSettingNewPin(true)} className="text-xs font-bold text-yellow-500 hover:underline flex items-center gap-2 transition-all"><Icon name="key" size={12}/> Change Admin PIN</button>
                                             ) : (
                                                 <form onSubmit={changePin} className="space-y-2">
-                                                    <input autoFocus type="password" value={pinInput} onChange={e=>setPinInput(e.target.value)} placeholder="New PIN" className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:ring-1 focus:ring-yellow-500 outline-none text-xs font-bold" />
+                                                    <input autoFocus type="password" value={pinInput} onChange={e=>setPinInput(e.target.value)} placeholder="New PIN" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:ring-1 focus:ring-yellow-500 outline-none text-xs font-bold" />
                                                     <div className="flex gap-2">
                                                         <button className="flex-1 bg-yellow-500 text-slate-900 py-1.5 rounded-lg text-[9px] font-black uppercase hover:bg-yellow-400">Save</button>
                                                         <button type="button" onClick={()=>setIsSettingNewPin(false)} className="text-slate-500 text-[9px] uppercase font-bold px-2">Cancel</button>
@@ -653,14 +941,18 @@
                                             )}
                                         </div>
                                         <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-inner">
-                                            <label className="text-[9px] font-black text-slate-500 uppercase block mb-3 tracking-widest text-slate-500">Player Passcodes</label>
-                                            <div className="space-y-3">
-                                                {users.map(u => (
-                                                    <div key={u.id} className="flex items-center justify-between">
-                                                        <span className="text-[10px] font-black text-white uppercase tracking-tighter">{u.name}</span>
-                                                        <input type="text" maxLength="8" value={u.passcode} onChange={e=>changeUserPasscode(u.id, e.target.value)} className="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[10px] font-black text-center text-emerald-400 outline-none focus:border-emerald-500 shadow-inner" />
-                                                    </div>
-                                                ))}
+                                            <label className="text-[9px] font-black text-slate-500 uppercase block mb-3 tracking-widest text-slate-500">Data Management</label>
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex gap-2">
+                                                    <button onClick={exportQuestsCSV} className="flex-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all">Export Quests</button>
+                                                    <button onClick={() => questsFileInputRef.current.click()} className="flex-1 bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white border border-blue-500/30 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all">Import Quests</button>
+                                                    <input type="file" ref={questsFileInputRef} onChange={importQuestsCSV} className="hidden-input" accept=".csv" />
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={exportRewardsCSV} className="flex-1 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white border border-purple-500/30 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all">Export Rewards</button>
+                                                    <button onClick={() => rewardsFileInputRef.current.click()} className="flex-1 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white border border-purple-500/30 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all">Import Rewards</button>
+                                                    <input type="file" ref={rewardsFileInputRef} onChange={importRewardsCSV} className="hidden-input" accept=".csv" />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -669,7 +961,7 @@
                         )}
                     </div>
                     <footer className="mt-12 mb-8 text-center text-[10px] font-black uppercase tracking-[0.4em] text-slate-600">
-                        Kingdom: {appId} | Status: Connected to Cloud
+                        Kingdom: {currentAppId} | Status: Connected to Cloud
                     </footer>
                 </div>
             );
