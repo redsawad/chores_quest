@@ -49,11 +49,26 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
+        // User provided configuration
+        const userFirebaseConfig = {
+            apiKey: "AIzaSyCRGIPlCxYxyllCnpseWDMVzRR56WQoV-k",
+            authDomain: "chore-quest-8eda3.firebaseapp.com",
+            projectId: "chore-quest-8eda3",
+            storageBucket: "chore-quest-8eda3.firebasestorage.app",
+            messagingSenderId: "300249788118",
+            appId: "1:300249788118:web:f5b69443f250ae71b5e377",
+            measurementId: "G-MZSCRBFL0B"
+        };
+
         // Safe extraction of environment variables
         const getConfig = () => {
             try {
-                return (typeof __firebase_config !== 'undefined' && __firebase_config) ? JSON.parse(__firebase_config) : null;
-            } catch (e) { return null; }
+                // Check for environment variable first, otherwise use hardcoded config
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    return JSON.parse(__firebase_config);
+                }
+                return userFirebaseConfig;
+            } catch (e) { return userFirebaseConfig; }
         };
 
         const config = getConfig();
