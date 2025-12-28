@@ -168,6 +168,7 @@
 
             const questsFileInputRef = useRef(null);
             const rewardsFileInputRef = useRef(null);
+            const fullBackupInputRef = useRef(null);
 
             const xpToLevel = 100;
 
@@ -363,6 +364,52 @@
                     });
                     setRewards(newRewards);
                     saveGameState(users, quests, newRewards, parentPin);
+                };
+                reader.readAsText(file);
+            };
+            
+            // --- Full System Backup Handlers ---
+            const exportFullBackup = () => {
+                const data = {
+                    users,
+                    quests,
+                    rewards,
+                    parentPin,
+                    version: "v7"
+                };
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `chore_quest_full_backup_${new Date().toISOString().split('T')[0]}.json`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const importFullBackup = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const data = JSON.parse(evt.target.result);
+                        if (data.users && data.quests && data.rewards) {
+                            if (confirm("This will overwrite all current data. Are you sure?")) {
+                                setUsers(data.users);
+                                setQuests(data.quests);
+                                setRewards(data.rewards);
+                                if (data.parentPin) setParentPin(data.parentPin);
+                                saveGameState(data.users, data.quests, data.rewards, data.parentPin || parentPin);
+                                alert("System restored successfully.");
+                            }
+                        } else {
+                            alert("Invalid backup file format.");
+                        }
+                    } catch (err) {
+                        console.error("Import failed", err);
+                        alert("Failed to parse backup file.");
+                    }
                 };
                 reader.readAsText(file);
             };
@@ -975,6 +1022,12 @@
                                                     <button onClick={exportRewardsCSV} className="flex-1 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white border border-purple-500/30 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all">Export Rewards</button>
                                                     <button onClick={() => rewardsFileInputRef.current.click()} className="flex-1 bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white border border-purple-500/30 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all">Import Rewards</button>
                                                     <input type="file" ref={rewardsFileInputRef} onChange={importRewardsCSV} className="hidden-input" accept=".csv" />
+                                                </div>
+                                                <div className="h-px bg-slate-700 my-2"></div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={exportFullBackup} className="flex-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all">Full System Backup</button>
+                                                    <button onClick={() => fullBackupInputRef.current.click()} className="flex-1 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all">Restore System</button>
+                                                    <input type="file" ref={fullBackupInputRef} onChange={importFullBackup} className="hidden-input" accept=".json" />
                                                 </div>
                                             </div>
                                         </div>
