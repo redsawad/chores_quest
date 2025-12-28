@@ -205,7 +205,7 @@
                 return onAuthStateChanged(auth, setUser);
             }, [sdkReady, isLocalMode]);
 
-            // 2. Data Sync
+            // 2. Data Sync with Auto-Migration
             useEffect(() => {
                 if (!sdkReady) return;
 
@@ -237,7 +237,15 @@
                             setRewards(data.rewards || DEFAULT_REWARDS);
                             setParentPin(data.parentPin || '1234');
                         } else {
-                            saveGameState(DEFAULT_USERS, DEFAULT_QUESTS, DEFAULT_REWARDS, '1234');
+                            // Migration Logic: Check for local data first
+                            const localBackup = localStorage.getItem(STORAGE_KEY);
+                            if (localBackup) {
+                                console.log("Migrating local data to cloud...");
+                                const data = JSON.parse(localBackup);
+                                saveGameState(data.users || DEFAULT_USERS, data.quests || DEFAULT_QUESTS, data.rewards || DEFAULT_REWARDS, data.parentPin || '1234');
+                            } else {
+                                saveGameState(DEFAULT_USERS, DEFAULT_QUESTS, DEFAULT_REWARDS, '1234');
+                            }
                         }
                     }, (err) => console.error("Sync Error:", err));
                     return () => unsubscribe();
