@@ -108,6 +108,23 @@
             "⚔️", "🛡️", "👑", "💎", "📜", "🧪", "🔥", "❄️", "⚡", "✨"
         ];
 
+        const AVATAR_LIBRARY = [
+            "🙂", "😎", "🤠", "🤡", "👻", "👽", "🤖", "💩", "🐱", "🐶", 
+            "🦁", "🐯", "🐻", "🐨", "🐼", "🐸", "🦄", "🐲", "🦸", "🦹",
+            "🧙", "🧚", "🧛", "🧜", "🧝", "🧞", "🧟", "🧠", "🧡", "✨"
+        ];
+
+        const THEME_COLORS = [
+            { name: 'yellow', hex: '#eab308', label: 'Gold' },
+            { name: 'blue', hex: '#3b82f6', label: 'Royal' },
+            { name: 'red', hex: '#ef4444', label: 'Crimson' },
+            { name: 'green', hex: '#22c55e', label: 'Emerald' },
+            { name: 'purple', hex: '#a855f7', label: 'Amethyst' },
+            { name: 'pink', hex: '#ec4899', label: 'Rose' },
+            { name: 'orange', hex: '#f97316', label: 'Amber' },
+            { name: 'cyan', hex: '#06b6d4', label: 'Sky' },
+        ];
+
         // type: 'global' (competitive) or 'personal' (individual)
         // days: array of integers 0-6 (Sun-Sat), empty = every day
         const DEFAULT_QUESTS = [
@@ -123,7 +140,7 @@
         ];
 
         const DEFAULT_USERS = [
-            { id: 'u1', name: "Player 1", passcode: "0000", totalXP: 0, level: 1, completedIds: [], pendingIds: [], cooldowns: {}, claimedRewards: [], fulfilledRewards: [], forceActiveIds: [] }
+            { id: 'u1', name: "Player 1", avatar: "🙂", themeColor: "yellow", passcode: "0000", totalXP: 0, level: 1, completedIds: [], pendingIds: [], cooldowns: {}, claimedRewards: [], fulfilledRewards: [], forceActiveIds: [], history: [] }
         ];
 
         // Safe Lucide Icon Component
@@ -194,6 +211,43 @@
             );
         };
 
+        const Confetti = () => {
+            const canvasRef = useRef(null);
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                const particles = [];
+                const colors = ['#eab308', '#ef4444', '#3b82f6', '#22c55e', '#a855f7'];
+                
+                for(let i=0; i<150; i++) {
+                    particles.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height - canvas.height,
+                        vx: Math.random() * 4 - 2,
+                        vy: Math.random() * 4 + 2,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        size: Math.random() * 8 + 4
+                    });
+                }
+
+                const animate = () => {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    particles.forEach(p => {
+                        p.x += p.vx; p.y += p.vy;
+                        if (p.y > canvas.height) p.y = -20;
+                        ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
+                    });
+                    requestAnimationFrame(animate);
+                };
+                animate();
+            }, []);
+            return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]" />;
+        };
+
         const App = () => {
             const [sdkReady, setSdkReady] = useState(false);
             const [isLocalMode, setIsLocalMode] = useState(false);
@@ -202,7 +256,7 @@
             const [users, setUsers] = useState(DEFAULT_USERS);
             const [quests, setQuests] = useState(DEFAULT_QUESTS);
             const [rewards, setRewards] = useState(DEFAULT_REWARDS);
-            const [activeUserId, setActiveUserId] = useState('u1');
+            const [activeUserId, setActiveUserId] = useState(null);
             const [parentPin, setParentPin] = useState('1234');
             
             const [isParentMode, setIsParentMode] = useState(false);
@@ -213,19 +267,23 @@
             const [pinError, setPinError] = useState(false);
             const [isSettingNewPin, setIsSettingNewPin] = useState(false);
             const [keyboardState, setKeyboardState] = useState({ isOpen: false, value: "", type: "text", title: "", onConfirm: null });
+            const [actionModalMode, setActionModalMode] = useState(null); // 'edit', 'deactivate', 'reactivate'
             const [keyboardPos, setKeyboardPos] = useState({ x: 0, y: 0 });
             const [soundEnabled, setSoundEnabled] = useState(true);
             const isDragging = useRef(false);
             const dragOffset = useRef({ x: 0, y: 0 });
-            const [isIdle, setIsIdle] = useState(false);
+            const [isIdle, setIsIdle] = useState(true);
+            const [vacationMode, setVacationMode] = useState(false);
+            const [vacationStartTime, setVacationStartTime] = useState(null);
             const idleTimerRef = useRef(null);
 
             const [newQuest, setNewQuest] = useState({ task: "", xp: 20, cooldown: 1, repeatable: false, assignedTo: null, icon: "✨", type: 'personal', days: [] });
             const [editingQuestId, setEditingQuestId] = useState(null);
             const [newReward, setNewReward] = useState({ title: "", level: 2, type: "primary", interval: 2 });
             const [editingRewardId, setEditingRewardId] = useState(null);
-            const [showAllQuests, setShowAllQuests] = useState(false); // Toggle for Today vs All
-            const [newUser, setNewUser] = useState("");
+            const [questFilter, setQuestFilter] = useState('today'); // 'today', 'all', 'history'
+            const [showAvatarModal, setShowAvatarModal] = useState(false);
+            const [showThemeModal, setShowThemeModal] = useState(false);
             
             const [showCelebration, setShowCelebration] = useState(false);
             const [now, setNow] = useState(Date.now());
@@ -287,6 +345,8 @@
                         setQuests(data.quests || DEFAULT_QUESTS);
                         setRewards(data.rewards || DEFAULT_REWARDS);
                         setParentPin(data.parentPin || '1234');
+                        setVacationMode(data.vacationMode || false);
+                        setVacationStartTime(data.vacationStartTime || null);
                     }
                 } else if (user) {
                     const { db, appId, doc, onSnapshot } = window.FirebaseSDK;
@@ -302,6 +362,8 @@
                             setQuests(data.quests || DEFAULT_QUESTS);
                             setRewards(data.rewards || DEFAULT_REWARDS);
                             setParentPin(data.parentPin || '1234');
+                            setVacationMode(data.vacationMode || false);
+                            setVacationStartTime(data.vacationStartTime || null);
                         } else {
                             // Migration Logic: Check for local data first
                             const localBackup = localStorage.getItem(STORAGE_KEY);
@@ -323,19 +385,19 @@
                 return () => clearInterval(timer);
             }, []);
 
-            const saveGameState = async (u, q, r, p) => {
+            const saveGameState = async (u, q, r, p, vm = vacationMode, vst = vacationStartTime) => {
                 if (!sdkReady) return;
                 
                 if (isLocalMode) {
                     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                        users: u, quests: q, rewards: r, parentPin: p, lastUpdated: Date.now()
+                        users: u, quests: q, rewards: r, parentPin: p, vacationMode: vm, vacationStartTime: vst, lastUpdated: Date.now()
                     }));
                 } else if (user) {
                     const { db, appId, doc, setDoc } = window.FirebaseSDK;
                     setIsSyncing(true);
                     try {
                         await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'gameState', 'current'), {
-                            users: u, quests: q, rewards: r, parentPin: p, lastUpdated: Date.now()
+                            users: u, quests: q, rewards: r, parentPin: p, vacationMode: vm, vacationStartTime: vst, lastUpdated: Date.now()
                         });
                     } catch (err) {
                         console.error("Save Error:", err);
@@ -346,6 +408,9 @@
             };
 
             const activeUser = users.find(u => u.id === activeUserId);
+            const activeUsersList = users.filter(u => !u.isDeactivated);
+            const deactivatedUsersList = users.filter(u => u.isDeactivated);
+            const theme = activeUser?.themeColor || 'yellow';
 
             // --- CSV Handlers ---
             const downloadCSV = (content, filename) => {
@@ -440,6 +505,8 @@
                     quests,
                     rewards,
                     parentPin,
+                    vacationMode,
+                    vacationStartTime,
                     version: "v7"
                 };
                 const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -465,7 +532,9 @@
                                 setQuests(data.quests);
                                 setRewards(data.rewards);
                                 if (data.parentPin) setParentPin(data.parentPin);
-                                saveGameState(data.users, data.quests, data.rewards, data.parentPin || parentPin);
+                                setVacationMode(data.vacationMode || false);
+                                setVacationStartTime(data.vacationStartTime || null);
+                                saveGameState(data.users, data.quests, data.rewards, data.parentPin || parentPin, data.vacationMode, data.vacationStartTime);
                                 alert("System restored successfully.");
                             }
                         } else {
@@ -537,6 +606,17 @@
                 };
             }, [isIdle]);
 
+            // --- Auto-Submit PIN ---
+            useEffect(() => {
+                if (pinInput.length === 4) {
+                    const timer = setTimeout(() => {
+                        if (showPinModal) verifyPin();
+                        if (showPlayerUnlockModal) verifyPlayerPasscode();
+                    }, 300);
+                    return () => clearTimeout(timer);
+                }
+            }, [pinInput, showPinModal, showPlayerUnlockModal]);
+
             // --- Handlers ---
             const addOrUpdateQuest = (e) => {
                 e.preventDefault();
@@ -601,7 +681,7 @@
                     }
                 } else {
                     setPinError(true);
-                    setTimeout(() => setPinError(false), 500);
+                    setTimeout(() => { setPinError(false); setPinInput(""); }, 500);
                 }
             };
 
@@ -625,7 +705,7 @@
                     setPinInput("");
                 } else {
                     setPinError(true);
-                    setTimeout(() => setPinError(false), 500);
+                    setTimeout(() => { setPinError(false); setPinInput(""); }, 500);
                 }
             };
 
@@ -666,6 +746,15 @@
                 if (!targetUser || !quest) return;
                 const newXP = targetUser.totalXP + quest.xp;
                 const newLevel = Math.floor(newXP / xpToLevel) + 1;
+                
+                const historyEntry = {
+                    id: Date.now(),
+                    questId: quest.id,
+                    task: quest.task,
+                    xp: quest.xp,
+                    timestamp: Date.now()
+                };
+
                 const updatedUsers = users.map(u => {
                     if (u.id === userId) {
                         const cds = { ...u.cooldowns };
@@ -674,7 +763,8 @@
                             ...u, totalXP: newXP, level: newLevel,
                             pendingIds: (u.pendingIds || []).filter(id => id !== questId),
                             completedIds: quest.repeatable ? u.completedIds : [...(u.completedIds || []), questId],
-                            cooldowns: cds
+                            cooldowns: cds,
+                            history: [historyEntry, ...(u.history || [])].slice(0, 50)
                         };
                     }
                     return u;
@@ -764,13 +854,87 @@
                 setRewards(rList); saveGameState(users, quests, rList, parentPin);
             };
 
-            const addUser = (e) => {
-                e.preventDefault();
-                if (!newUser.trim()) return;
+            const addUser = (name) => {
+                if (!name || !name.trim()) return;
                 const id = 'u' + Date.now();
-                const u = [...users, { id, name: newUser, passcode: "0000", totalXP: 0, level: 1, completedIds: [], pendingIds: [], cooldowns: {}, claimedRewards: [], fulfilledRewards: [], forceActiveIds: [] }];
+                const u = [...users, { id, name: name.trim(), avatar: "🙂", themeColor: "yellow", passcode: "0000", totalXP: 0, level: 1, completedIds: [], pendingIds: [], cooldowns: {}, claimedRewards: [], fulfilledRewards: [], forceActiveIds: [], isDeactivated: false, history: [] }];
                 setUsers(u); saveGameState(u, quests, rewards, parentPin);
-                setNewUser("");
+            };
+
+            const editUser = (userId, currentName) => {
+                openKeyboard('text', currentName, 'Edit Player Name', (newName) => {
+                    if (newName && newName.trim()) {
+                        const updatedUsers = users.map(u => u.id === userId ? { ...u, name: newName.trim() } : u);
+                        setUsers(updatedUsers);
+                        saveGameState(updatedUsers, quests, rewards, parentPin);
+                        setActionModalMode(null);
+                    }
+                });
+            };
+
+            const updateAvatar = (userId, newAvatar) => {
+                const updatedUsers = users.map(u => u.id === userId ? { ...u, avatar: newAvatar } : u);
+                setUsers(updatedUsers);
+                saveGameState(updatedUsers, quests, rewards, parentPin);
+            };
+
+            const updateTheme = (userId, newColor) => {
+                const updatedUsers = users.map(u => u.id === userId ? { ...u, themeColor: newColor } : u);
+                setUsers(updatedUsers);
+                saveGameState(updatedUsers, quests, rewards, parentPin);
+            };
+
+            const handleDeactivateUser = (userId) => {
+                if (activeUsersList.length <= 1) {
+                    alert("Cannot deactivate the last active player.");
+                    return;
+                }
+                if (confirm("Deactivate this player? They will be hidden from the list but data is preserved.")) {
+                    const updatedUsers = users.map(u => u.id === userId ? { ...u, isDeactivated: true } : u);
+                    setUsers(updatedUsers);
+                    if (activeUserId === userId) setActiveUserId(null);
+                    saveGameState(updatedUsers, quests, rewards, parentPin);
+                    setActionModalMode(null);
+                }
+            };
+
+            const handleReactivateUser = (userId) => {
+                const updatedUsers = users.map(u => u.id === userId ? { ...u, isDeactivated: false } : u);
+                setUsers(updatedUsers);
+                saveGameState(updatedUsers, quests, rewards, parentPin);
+                setActionModalMode(null);
+            };
+
+            const toggleVacationMode = () => {
+                if (vacationMode) {
+                    // Turning OFF: Shift cooldowns
+                    const end = Date.now();
+                    const start = vacationStartTime || end;
+                    const diff = end - start;
+                    
+                    const updatedUsers = users.map(u => {
+                        const newCooldowns = {};
+                        Object.entries(u.cooldowns || {}).forEach(([qid, time]) => {
+                            // If cooldown was set to expire after vacation started, extend it
+                            if (time > start) {
+                                newCooldowns[qid] = time + diff;
+                            } else {
+                                newCooldowns[qid] = time;
+                            }
+                        });
+                        return { ...u, cooldowns: newCooldowns };
+                    });
+                    setUsers(updatedUsers);
+                    setVacationMode(false);
+                    setVacationStartTime(null);
+                    saveGameState(updatedUsers, quests, rewards, parentPin, false, null);
+                } else {
+                    // Turning ON
+                    const now = Date.now();
+                    setVacationMode(true);
+                    setVacationStartTime(now);
+                    saveGameState(users, quests, rewards, parentPin, true, now);
+                }
             };
 
             const formatCooldown = (cdTime) => {
@@ -800,7 +964,15 @@
                 <div className="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8 font-sans">
                     {isSyncing && <div className="fixed top-4 right-4 z-[100] animate-spin text-yellow-500"><Icon name="refresh-cw" size={20}/></div>}
 
+                    {vacationMode && (
+                        <div className="fixed top-0 left-0 right-0 bg-teal-600 text-white text-center py-2 z-[90] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2">
+                            <Icon name="palmtree" size={20} /> Vacation Mode Active - Cooldowns Paused
+                        </div>
+                    )}
+
                     {showCelebration && activeUser && (
+                        <>
+                        <Confetti />
                         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/60 backdrop-blur-sm" onClick={() => setShowCelebration(false)}>
                             <div className="bg-yellow-500 text-black p-8 rounded-2xl animate-bounce border-4 border-white flex flex-col items-center shadow-2xl">
                                 <Icon name="trophy" size={64} className="mb-4" />
@@ -808,6 +980,7 @@
                                 <p className="text-xl font-bold mt-2 text-center">You reached Level {activeUser.level}</p>
                             </div>
                         </div>
+                        </>
                     )}
 
                     {(showPinModal || showPlayerUnlockModal) && (
@@ -868,6 +1041,30 @@
                         </div>
                     )}
 
+                    {actionModalMode && (
+                        <div className="fixed inset-0 z-[90] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setActionModalMode(null)}>
+                            <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 w-full max-w-md shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                                <h3 className="text-xl font-black text-white uppercase italic mb-6 text-center">
+                                    {actionModalMode === 'edit' ? 'Select Player to Edit' : 
+                                     actionModalMode === 'deactivate' ? 'Select Player to Deactivate' : 
+                                     'Select Player to Reactivate'}
+                                </h3>
+                                <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto">
+                                    {(actionModalMode === 'reactivate' ? deactivatedUsersList : activeUsersList).map(u => (
+                                        <button key={u.id} onClick={() => {
+                                            if (actionModalMode === 'edit') editUser(u.id, u.name);
+                                            else if (actionModalMode === 'deactivate') handleDeactivateUser(u.id);
+                                            else handleReactivateUser(u.id);
+                                        }} className="p-4 bg-slate-700 hover:bg-slate-600 rounded-xl font-bold text-white transition-all border border-slate-600 hover:border-yellow-500">
+                                            {u.name}
+                                        </button>
+                                    ))}
+                                </div>
+                                <button onClick={() => setActionModalMode(null)} className="w-full mt-6 py-3 bg-slate-900 rounded-xl text-slate-500 font-bold uppercase hover:text-white transition-colors">Cancel</button>
+                            </div>
+                        </div>
+                    )}
+
                     {isIdle ? (
                         <div className="fixed inset-0 z-[60] bg-slate-950 flex flex-col items-center justify-center p-8 overflow-y-auto animate-in fade-in duration-500" onClick={() => setIsIdle(false)}>
                             <h1 className="text-4xl md:text-6xl font-black text-yellow-500 uppercase italic mb-12 tracking-tighter animate-pulse text-center">
@@ -898,10 +1095,10 @@
                             <div className="min-h-full flex flex-col items-center justify-center p-4 animate-in zoom-in-95 duration-300">
                                 <h1 className="text-4xl font-black text-white uppercase italic mb-8 tracking-tighter text-center">Who is playing?</h1>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 w-full max-w-4xl">
-                                {users.map(u => (
+                                {activeUsersList.map(u => (
                                     <button key={u.id} onClick={() => handlePlayerSwitchRequest(u.id)} className="group bg-slate-800 hover:bg-slate-700 p-6 rounded-[2rem] border-2 border-slate-700 hover:border-yellow-500 flex flex-col items-center gap-4 transition-all hover:scale-105 hover:shadow-2xl hover:shadow-yellow-500/20">
                                         <div className="w-20 h-20 bg-slate-700 group-hover:bg-yellow-500 rounded-full flex items-center justify-center text-slate-400 group-hover:text-slate-900 font-black text-3xl transition-colors">
-                                            {u.name.charAt(0)}
+                                            {u.avatar || u.name.charAt(0)}
                                         </div>
                                         <span className="font-bold text-xl text-slate-300 group-hover:text-white">{u.name}</span>
                                     </button>
@@ -915,11 +1112,11 @@
                     ) : (
                     <div className="max-w-4xl mx-auto">
                         <header className="flex justify-between items-center mb-6">
-                            <h1 className="text-2xl font-black italic text-yellow-500 uppercase tracking-tighter flex items-center gap-2">
+                            <h1 className={`text-2xl font-black italic text-${theme}-500 uppercase tracking-tighter flex items-center gap-2`}>
                                 <Icon name="sword" size={24} /> Chore Quest
                             </h1>
                             <div className="flex items-center gap-2">
-                                <button onClick={() => setSoundEnabled(!soundEnabled)} className={`p-2 rounded-full transition-all ${soundEnabled ? 'bg-slate-700 text-yellow-500' : 'bg-slate-800 text-slate-500'}`}><Icon name={soundEnabled ? "volume-2" : "volume-x"} size={20} /></button>
+                                <button onClick={() => setSoundEnabled(!soundEnabled)} className={`p-2 rounded-full transition-all ${soundEnabled ? `bg-slate-700 text-${theme}-500` : 'bg-slate-800 text-slate-500'}`}><Icon name={soundEnabled ? "volume-2" : "volume-x"} size={20} /></button>
                                 <button onClick={handleParentModeToggle} className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all ${isParentMode ? 'bg-red-600 shadow-lg text-white' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white'}`}>
                                     <Icon name={isParentMode ? "unlock" : "lock"} size={16}/>
                                     {isParentMode ? "Exit" : "Parent Mode"}
@@ -929,32 +1126,47 @@
                         </header>
 
                         <div className="flex flex-wrap gap-2 mb-8 bg-slate-800/40 p-2 rounded-2xl border border-slate-800">
-                            {users.map(u => (
-                                <button key={u.id} onClick={() => handlePlayerSwitchRequest(u.id)} className={`px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all font-bold ${activeUserId === u.id ? 'bg-yellow-500 text-slate-900 shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-                                    {u.name} {(u.pendingIds || []).length > 0 && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
-                                </button>
+                            {activeUsersList.map(u => (
+                                <div key={u.id} className="relative group">
+                                    <button onClick={() => handlePlayerSwitchRequest(u.id)} className={`px-5 py-2.5 rounded-xl flex items-center gap-2 transition-all font-bold ${activeUserId === u.id ? `bg-${theme}-500 text-slate-900 shadow-lg` : 'text-slate-400 hover:bg-slate-800'}`}>
+                                        {u.name} {(u.pendingIds || []).length > 0 && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
+                                    </button>
+                                </div>
                             ))}
                             {isParentMode && (
-                                <form onSubmit={addUser} className="flex gap-2 ml-auto p-1">
-                                    <input readOnly onClick={() => openKeyboard('text', newUser, 'New Player Name', setNewUser)} className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1 text-xs focus:ring-1 focus:ring-yellow-500 outline-none font-bold text-white w-24 md:w-32 cursor-pointer" placeholder="Add Player..." value={newUser} />
-                                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 p-1.5 rounded-lg text-white"><Icon name="plus" size={18}/></button>
-                                </form>
+                                <div className="flex gap-2 ml-auto p-1">
+                                    <button onClick={() => openKeyboard('text', "", 'New Player Name', addUser)} className="bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg text-white text-xs font-bold uppercase flex items-center gap-1"><Icon name="plus" size={14}/> Add</button>
+                                    <button onClick={() => setActionModalMode('edit')} className="bg-blue-600 hover:bg-blue-500 px-3 py-1.5 rounded-lg text-white text-xs font-bold uppercase flex items-center gap-1"><Icon name="edit-2" size={14}/> Edit</button>
+                                    <button onClick={() => setActionModalMode('deactivate')} className="bg-red-600 hover:bg-red-500 px-3 py-1.5 rounded-lg text-white text-xs font-bold uppercase flex items-center gap-1"><Icon name="user-x" size={14}/> Deactivate</button>
+                                    {deactivatedUsersList.length > 0 && (
+                                        <button onClick={() => setActionModalMode('reactivate')} className="bg-slate-600 hover:bg-slate-500 px-3 py-1.5 rounded-lg text-white text-xs font-bold uppercase flex items-center gap-1"><Icon name="user-check" size={14}/> Reactivate</button>
+                                    )}
+                                </div>
                             )}
                         </div>
 
                         <div className="bg-slate-800 p-6 rounded-[2.5rem] border border-slate-700 shadow-2xl flex flex-col md:flex-row items-center gap-6 mb-10">
                             {isParentMode ? (
-                                <div className="flex flex-col items-center">
+                                <div className="flex flex-col items-center gap-2">
+                                    <button onClick={() => setShowAvatarModal(true)} className="relative h-24 w-24 rounded-3xl bg-slate-700 flex items-center justify-center border-4 border-slate-600 shadow-xl hover:border-yellow-500 transition-all">
+                                        <span className="text-5xl">{activeUser.avatar || "🙂"}</span>
+                                        <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white p-1.5 rounded-full shadow-md"><Icon name="edit-2" size={12}/></div>
+                                    </button>
                                     <label className="text-[10px] font-black text-yellow-500 uppercase mb-1 tracking-widest">Level</label>
                                     <input type="number" value={activeUser.level} onChange={(e) => updatePlayerStats(activeUser.id, 'level', e.target.value)} className="h-16 w-20 rounded-3xl bg-yellow-500 text-slate-900 text-3xl font-black text-center border-4 border-yellow-300 shadow-xl outline-none" />
                                 </div>
                             ) : (
-                                <div className="h-24 w-24 rounded-3xl bg-yellow-500 flex items-center justify-center border-4 border-yellow-300 shadow-2xl rotate-3">
-                                    <span className="text-5xl font-black text-slate-900">{activeUser.level}</span>
-                                </div>
+                                <button onClick={() => setShowAvatarModal(true)} className="relative h-24 w-24 rounded-3xl bg-slate-700 flex items-center justify-center border-4 border-slate-600 shadow-2xl rotate-3 hover:scale-105 transition-transform">
+                                    <span className="text-5xl filter drop-shadow-lg">{activeUser.avatar || "🙂"}</span>
+                                    <div className={`absolute -top-3 -right-3 bg-${theme}-500 text-slate-900 w-10 h-10 rounded-full flex items-center justify-center font-black border-4 border-slate-800 text-lg shadow-lg z-10`}>{activeUser.level}</div>
+                                    <div className="absolute -bottom-2 -right-2 bg-slate-600 text-white p-1 rounded-full shadow-md"><Icon name="edit-2" size={10}/></div>
+                                </button>
                             )}
                             <div className="flex-1 w-full text-center md:text-left">
                                 <h2 className="text-3xl font-black text-white uppercase italic tracking-tighter">{activeUser.name}</h2>
+                                <button onClick={() => setShowThemeModal(true)} className={`mt-1 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded bg-${theme}-500/10 text-${theme}-500 hover:bg-${theme}-500/20 transition-colors`}>
+                                    Customize Theme <Icon name="palette" size={10} className="inline ml-1"/>
+                                </button>
                                 {isParentMode ? (
                                     <div className="mt-2">
                                         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Total XP Override</label>
@@ -963,9 +1175,9 @@
                                 ) : (
                                     <div className="flex items-center gap-2 mt-2">
                                         <div className="h-3 flex-1 bg-slate-900 rounded-full overflow-hidden border border-slate-700 shadow-inner">
-                                            <div className="h-full bg-yellow-500 transition-all duration-1000 shadow-[0_0_12px_rgba(234,179,8,0.4)]" style={{ width: `${activeUser.totalXP % xpToLevel}%` }}></div>
+                                            <div className={`h-full bg-${theme}-500 transition-all duration-1000 shadow-[0_0_12px_rgba(255,255,255,0.2)]`} style={{ width: `${activeUser.totalXP % xpToLevel}%` }}></div>
                                         </div>
-                                        <span className="text-xs font-black text-yellow-500 whitespace-nowrap">{activeUser.totalXP % xpToLevel} / {xpToLevel} XP</span>
+                                        <span className={`text-xs font-black text-${theme}-500 whitespace-nowrap`}>{activeUser.totalXP % xpToLevel} / {xpToLevel} XP</span>
                                     </div>
                                 )}
                             </div>
@@ -976,16 +1188,30 @@
                                 <div className="flex items-center justify-between">
                                     <h2 className="text-sm font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2 px-2 tracking-widest"><Icon name="layout-list" size={16}/> Mission Log</h2>
                                     <div className="flex bg-slate-800 rounded-lg p-1">
-                                        <button onClick={()=>setShowAllQuests(false)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${!showAllQuests ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>Today</button>
-                                        <button onClick={()=>setShowAllQuests(true)} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${showAllQuests ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>All</button>
+                                        <button onClick={()=>setQuestFilter('today')} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${questFilter === 'today' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>Today</button>
+                                        <button onClick={()=>setQuestFilter('all')} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${questFilter === 'all' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>All</button>
+                                        <button onClick={()=>setQuestFilter('history')} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${questFilter === 'history' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>History</button>
                                     </div>
                                 </div>
-                                {quests.filter(q => {
+                                {questFilter === 'history' ? (
+                                    <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
+                                        {(activeUser.history || []).length === 0 && <div className="text-center text-slate-500 italic py-8">No completed quests yet.</div>}
+                                        {(activeUser.history || []).sort((a,b) => b.timestamp - a.timestamp).map(entry => (
+                                            <div key={entry.id} className="bg-slate-800/50 p-4 rounded-2xl border border-slate-700 flex items-center justify-between">
+                                                <div>
+                                                    <p className="font-bold text-white">{entry.task}</p>
+                                                    <p className="text-[10px] text-slate-500 uppercase font-bold">{new Date(entry.timestamp).toLocaleDateString()} • {new Date(entry.timestamp).toLocaleTimeString()}</p>
+                                                </div>
+                                                <span className="bg-yellow-500/10 text-yellow-500 px-2 py-1 rounded text-xs font-black">+{entry.xp} XP</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : quests.filter(q => {
                                     // 1. Filter by User Assignment
                                     if (q.assignedTo && q.assignedTo !== activeUser.id) return false;
                                     // 2. Filter by Day (if in "Today" mode), unless Force Active
                                     const isForceActive = (activeUser.forceActiveIds || []).includes(q.id);
-                                    if (!showAllQuests && !isForceActive && q.days && q.days.length > 0 && !q.days.includes(currentDayIndex)) return false;
+                                    if (questFilter === 'today' && !isForceActive && q.days && q.days.length > 0 && !q.days.includes(currentDayIndex)) return false;
                                     return true;
                                 }).map(quest => {
                                     const isPending = (activeUser.pendingIds || []).includes(quest.id);
@@ -1212,6 +1438,10 @@
                                     <h4 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] mb-6 flex items-center gap-2 px-1"><Icon name="settings" size={14}/> System Security & Data</h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-inner">
+                                            <label className="text-[9px] font-black text-slate-500 uppercase block mb-3 tracking-widest text-slate-500">Game Settings</label>
+                                            <button onClick={toggleVacationMode} className={`w-full py-3 rounded-xl font-black uppercase text-xs flex items-center justify-center gap-2 transition-all mb-4 ${vacationMode ? 'bg-teal-600 text-white shadow-lg' : 'bg-slate-900 text-slate-400 border border-slate-700'}`}>
+                                                <Icon name="palmtree" size={16}/> {vacationMode ? "End Vacation Mode" : "Start Vacation Mode"}
+                                            </button>
                                             <label className="text-[9px] font-black text-slate-500 uppercase block mb-3 tracking-widest text-slate-500">Admin Master PIN</label>
                                             {!isSettingNewPin ? (
                                                 <button onClick={()=>setIsSettingNewPin(true)} className="text-xs font-bold text-yellow-500 hover:underline flex items-center gap-2 transition-all"><Icon name="key" size={12}/> Change Admin PIN</button>
@@ -1247,6 +1477,36 @@
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {showAvatarModal && (
+                            <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setShowAvatarModal(false)}>
+                                <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 w-full max-w-lg shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                                    <h3 className="text-xl font-black text-white uppercase italic mb-6 text-center">Choose Your Avatar</h3>
+                                    <div className="grid grid-cols-5 sm:grid-cols-6 gap-3 max-h-[60vh] overflow-y-auto p-2">
+                                        {AVATAR_LIBRARY.map(avatar => (
+                                            <button key={avatar} onClick={() => { updateAvatar(activeUser.id, avatar); setShowAvatarModal(false); }} className={`text-3xl p-3 rounded-xl transition-all ${activeUser.avatar === avatar ? 'bg-yellow-500 shadow-lg scale-110' : 'bg-slate-700 hover:bg-slate-600'}`}>{avatar}</button>
+                                        ))}
+                                    </div>
+                                    <button onClick={() => setShowAvatarModal(false)} className="w-full mt-6 py-3 bg-slate-900 rounded-xl text-slate-500 font-bold uppercase hover:text-white transition-colors">Cancel</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {showThemeModal && (
+                            <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setShowThemeModal(false)}>
+                                <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 w-full max-w-md shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                                    <h3 className="text-xl font-black text-white uppercase italic mb-6 text-center">Select Theme Color</h3>
+                                    <div className="grid grid-cols-4 gap-4 mb-6">
+                                        {THEME_COLORS.map(c => (
+                                            <button key={c.name} onClick={() => { updateTheme(activeUser.id, c.name); setShowThemeModal(false); }} className={`h-16 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 ${activeUser.themeColor === c.name ? 'ring-4 ring-white scale-105' : 'hover:scale-105'}`} style={{ backgroundColor: c.hex }}>
+                                                {activeUser.themeColor === c.name && <Icon name="check" size={24} className="text-white drop-shadow-md"/>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <button onClick={() => setShowThemeModal(false)} className="w-full py-3 bg-slate-900 rounded-xl text-slate-500 font-bold uppercase hover:text-white transition-colors">Cancel</button>
                                 </div>
                             </div>
                         )}
