@@ -136,6 +136,46 @@
             return <i data-lucide={name} className={className} style={{width: size, height: size, display: 'inline-block'}}></i>;
         };
 
+        const VirtualKeyboard = ({ type = 'text', onInput, onDelete, onSubmit }) => {
+            const numericLayout = [
+                ['1', '2', '3'],
+                ['4', '5', '6'],
+                ['7', '8', '9'],
+                ['Backspace', '0', 'Enter']
+            ];
+            const textLayout = [
+                ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
+                ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
+                ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
+                ['Space', 'Backspace', 'Enter']
+            ];
+            const layout = type === 'numeric' ? numericLayout : textLayout;
+
+            return (
+                <div className="flex flex-col gap-1.5 p-2 bg-slate-800/50 rounded-xl w-full select-none">
+                    {layout.map((row, i) => (
+                        <div key={i} className="flex justify-center gap-1">
+                            {row.map(key => {
+                                const isAction = ['Enter', 'Backspace', 'Space'].includes(key);
+                                let label = key;
+                                if(key === 'Backspace') label = <Icon name="delete" size={20}/>;
+                                if(key === 'Enter') label = <Icon name="corner-down-left" size={20}/>;
+                                if(key === 'Space') label = 'Space';
+                                
+                                return (
+                                    <button key={key} type="button" onClick={(e) => { e.preventDefault(); if (key === 'Backspace') onDelete(); else if (key === 'Enter') onSubmit(); else if (key === 'Space') onInput(' '); else onInput(key); }}
+                                        className={`${key === 'Space' ? 'flex-[4]' : 'flex-1'} ${isAction ? 'bg-slate-600 border-slate-500' : 'bg-slate-700 border-slate-600'} border-b-4 active:border-b-0 active:translate-y-1 hover:bg-slate-600 active:bg-slate-500 text-white font-bold py-3 rounded-lg flex items-center justify-center text-lg shadow-md transition-all min-w-[32px]`}
+                                    >
+                                        {label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+
         const App = () => {
             const [sdkReady, setSdkReady] = useState(false);
             const [isLocalMode, setIsLocalMode] = useState(false);
@@ -154,6 +194,7 @@
             const [pinInput, setPinInput] = useState("");
             const [pinError, setPinError] = useState(false);
             const [isSettingNewPin, setIsSettingNewPin] = useState(false);
+            const [keyboardState, setKeyboardState] = useState({ isOpen: false, value: "", type: "text", title: "", onConfirm: null });
 
             const [newQuest, setNewQuest] = useState({ task: "", xp: 20, cooldown: 1, repeatable: false, assignedTo: null, icon: "✨", type: 'personal', days: [] });
             const [editingQuestId, setEditingQuestId] = useState(null);
@@ -414,6 +455,11 @@
                 reader.readAsText(file);
             };
 
+            const openKeyboard = (type, value, title, onConfirm) => {
+                setKeyboardState({ isOpen: true, value: value || "", type, title, onConfirm });
+            };
+            const closeKeyboard = () => setKeyboardState({ ...keyboardState, isOpen: false });
+
             // --- Handlers ---
             const addOrUpdateQuest = (e) => {
                 e.preventDefault();
@@ -468,7 +514,7 @@
             };
 
             const verifyPin = (e) => {
-                e.preventDefault();
+                if (e) e.preventDefault();
                 if (pinInput === parentPin) {
                     setIsParentMode(true);
                     setShowPinModal(false);
@@ -491,7 +537,7 @@
             };
 
             const verifyPlayerPasscode = (e) => {
-                e.preventDefault();
+                if (e) e.preventDefault();
                 const target = users.find(u => u.id === pendingUserId);
                 if (target && pinInput === (target.passcode || "0000")) {
                     setActiveUserId(pendingUserId);
@@ -504,14 +550,12 @@
             };
 
             const changePin = (e) => {
-                e.preventDefault();
-                if (pinInput.length >= 4) {
-                    const newPin = pinInput;
-                    setParentPin(newPin);
-                    setIsSettingNewPin(false);
-                    setPinInput("");
-                    saveGameState(users, quests, rewards, newPin);
-                }
+                if (e) e.preventDefault();
+                const newPin = pinInput;
+                setParentPin(newPin);
+                setIsSettingNewPin(false);
+                setPinInput("");
+                saveGameState(users, quests, rewards, newPin);
             };
 
             const changeUserPasscode = (userId, newCode) => {
@@ -688,20 +732,53 @@
 
                     {(showPinModal || showPlayerUnlockModal) && (
                         <div className="fixed inset-0 flex items-center justify-center z-[70] bg-slate-950/90 backdrop-blur-md">
-                            <div className={`bg-slate-800 p-8 rounded-[2rem] border-2 shadow-2xl w-full max-sm:max-w-full max-w-sm modal-enter ${pinError ? 'border-red-500 animate-shake' : 'border-slate-700'}`}>
+                            <div className={`bg-slate-800 p-6 rounded-[2rem] border-2 shadow-2xl w-full max-sm:max-w-full max-w-sm modal-enter ${pinError ? 'border-red-500 animate-shake' : 'border-slate-700'}`}>
                                 <div className="text-center mb-6">
                                     <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-yellow-500">
                                         <Icon name="lock" size={32} />
                                     </div>
                                     <h2 className="text-2xl font-black uppercase italic text-white tracking-tight">{showPinModal ? 'Parent Access' : `Unlock ${users.find(u=>u.id===pendingUserId)?.name}`}</h2>
                                 </div>
-                                <form onSubmit={showPinModal ? verifyPin : verifyPlayerPasscode} className="space-y-4">
-                                    <input autoFocus type="password" value={pinInput} onChange={e=>setPinInput(e.target.value)} placeholder="••••" className="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl py-4 text-center text-3xl tracking-[1em] font-black text-yellow-500 outline-none focus:border-yellow-500 transition-colors" />
+                                <div className="space-y-4">
+                                    <div className="w-full bg-slate-900 border-2 border-slate-700 rounded-2xl py-4 text-center text-3xl tracking-[1em] font-black text-yellow-500 h-20 flex items-center justify-center">
+                                        {pinInput.replace(/./g, '•')}
+                                    </div>
+                                    <VirtualKeyboard 
+                                        type="numeric" 
+                                        onInput={c => setPinInput(prev => (prev + c).slice(0, 4))} 
+                                        onDelete={() => setPinInput(prev => prev.slice(0, -1))}
+                                        onSubmit={showPinModal ? verifyPin : verifyPlayerPasscode}
+                                    />
                                     <div className="flex gap-3">
                                         <button type="button" onClick={()=>{setShowPinModal(false); setShowPlayerUnlockModal(false);}} className="flex-1 bg-slate-700 font-bold py-3 rounded-xl hover:bg-slate-600">Back</button>
-                                        <button type="submit" className="flex-1 bg-yellow-500 text-slate-900 font-black py-3 rounded-xl hover:bg-yellow-400">Unlock</button>
                                     </div>
-                                </form>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {keyboardState.isOpen && (
+                        <div className="fixed inset-0 flex items-end sm:items-center justify-center z-[80] bg-slate-950/90 backdrop-blur-md p-4">
+                            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-700 w-full max-w-2xl shadow-2xl flex flex-col gap-4 animate-in slide-in-from-bottom-10">
+                                <div className="flex justify-between items-center">
+                                    <h3 className="text-xl font-black text-white uppercase italic">{keyboardState.title}</h3>
+                                    <button onClick={closeKeyboard} className="p-2 bg-slate-800 rounded-lg text-slate-400"><Icon name="x" size={24}/></button>
+                                </div>
+                                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                                    <div className="text-2xl font-bold text-white min-h-[2rem] break-words">
+                                        {keyboardState.type === 'password' ? '•'.repeat(keyboardState.value.length) : keyboardState.value}
+                                        <span className="animate-pulse text-yellow-500">|</span>
+                                    </div>
+                                </div>
+                                <VirtualKeyboard 
+                                    type={keyboardState.type === 'numeric' ? 'numeric' : 'text'}
+                                    onInput={(char) => setKeyboardState(prev => ({ ...prev, value: prev.value + char }))}
+                                    onDelete={() => setKeyboardState(prev => ({ ...prev, value: prev.value.slice(0, -1) }))}
+                                    onSubmit={() => {
+                                        if(keyboardState.onConfirm) keyboardState.onConfirm(keyboardState.value);
+                                        closeKeyboard();
+                                    }}
+                                />
                             </div>
                         </div>
                     )}
@@ -725,8 +802,8 @@
                             ))}
                             {isParentMode && (
                                 <form onSubmit={addUser} className="flex gap-2 ml-auto p-1">
-                                    <input className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1 text-xs focus:ring-1 focus:ring-yellow-500 outline-none font-bold text-white w-24 md:w-32" placeholder="Add Player..." value={newUser} onChange={(e) => setNewUser(e.target.value)} />
-                                    <button className="bg-emerald-600 hover:bg-emerald-500 p-1.5 rounded-lg text-white"><Icon name="plus" size={18}/></button>
+                                    <input readOnly onClick={() => openKeyboard('text', newUser, 'New Player Name', setNewUser)} className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1 text-xs focus:ring-1 focus:ring-yellow-500 outline-none font-bold text-white w-24 md:w-32 cursor-pointer" placeholder="Add Player..." value={newUser} />
+                                    <button type="submit" className="bg-emerald-600 hover:bg-emerald-500 p-1.5 rounded-lg text-white"><Icon name="plus" size={18}/></button>
                                 </form>
                             )}
                         </div>
@@ -929,7 +1006,7 @@
                                 <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-700">
                                     <h4 className="text-sm font-black text-yellow-500 mb-6 uppercase italic tracking-tighter">Quest Master Editor</h4>
                                     <form onSubmit={addOrUpdateQuest} className="space-y-6">
-                                        <input value={newQuest.task} onChange={e=>setNewQuest({...newQuest, task: e.target.value})} placeholder="Epic Mission Name..." className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-6 py-4 font-bold outline-none focus:border-yellow-500 text-white shadow-inner" />
+                                        <input readOnly onClick={() => openKeyboard('text', newQuest.task, 'Mission Name', (val) => setNewQuest({...newQuest, task: val}))} value={newQuest.task} placeholder="Epic Mission Name..." className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-6 py-4 font-bold outline-none focus:border-yellow-500 text-white shadow-inner cursor-pointer" />
                                         <div>
                                             <label className="text-[10px] font-black text-slate-500 uppercase block mb-3 px-2 tracking-[0.2em]">Select Mission Icon</label>
                                             <div className="grid grid-cols-6 sm:grid-cols-10 gap-2 bg-slate-800 p-4 rounded-xl border border-slate-700 max-h-40 overflow-y-auto shadow-inner">
@@ -975,7 +1052,7 @@
                                 <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-700">
                                     <h4 className="text-sm font-black text-blue-500 mb-6 uppercase italic tracking-tighter">Reward Master Editor</h4>
                                     <form onSubmit={addOrUpdateReward} className="space-y-6">
-                                        <input value={newReward.title} onChange={e=>setNewReward({...newReward, title: e.target.value})} placeholder="Legendary Prize Name..." className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-6 py-4 font-bold outline-none focus:border-blue-500 text-white shadow-inner" />
+                                        <input readOnly onClick={() => openKeyboard('text', newReward.title, 'Reward Title', (val) => setNewReward({...newReward, title: val}))} value={newReward.title} placeholder="Legendary Prize Name..." className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-6 py-4 font-bold outline-none focus:border-blue-500 text-white shadow-inner cursor-pointer" />
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                             <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 text-center shadow-inner">
                                                 <label className="text-[9px] font-black uppercase text-slate-500 block mb-1 tracking-widest">Unlock Level</label>
@@ -1005,13 +1082,13 @@
                                             {!isSettingNewPin ? (
                                                 <button onClick={()=>setIsSettingNewPin(true)} className="text-xs font-bold text-yellow-500 hover:underline flex items-center gap-2 transition-all"><Icon name="key" size={12}/> Change Admin PIN</button>
                                             ) : (
-                                                <form onSubmit={changePin} className="space-y-2">
-                                                    <input autoFocus type="password" value={pinInput} onChange={e=>setPinInput(e.target.value)} placeholder="New PIN" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:ring-1 focus:ring-yellow-500 outline-none text-xs font-bold" />
+                                                <div className="space-y-2">
+                                                    <input readOnly onClick={() => openKeyboard('numeric', pinInput, 'New Admin PIN', (val) => setPinInput(val))} value={pinInput} placeholder="New PIN" className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:ring-1 focus:ring-yellow-500 outline-none text-xs font-bold cursor-pointer" />
                                                     <div className="flex gap-2">
-                                                        <button className="flex-1 bg-yellow-500 text-slate-900 py-1.5 rounded-lg text-[9px] font-black uppercase hover:bg-yellow-400">Save</button>
+                                                        <button onClick={changePin} className="flex-1 bg-yellow-500 text-slate-900 py-1.5 rounded-lg text-[9px] font-black uppercase hover:bg-yellow-400">Save</button>
                                                         <button type="button" onClick={()=>setIsSettingNewPin(false)} className="text-slate-500 text-[9px] uppercase font-bold px-2">Cancel</button>
                                                     </div>
-                                                </form>
+                                                </div>
                                             )}
                                         </div>
                                         <div className="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-inner">
