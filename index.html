@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Family Chore Quest: Cloud Edition</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -136,7 +136,7 @@
             return <i data-lucide={name} className={className} style={{width: size, height: size, display: 'inline-block'}}></i>;
         };
 
-        const VirtualKeyboard = ({ type = 'text', onInput, onDelete, onSubmit }) => {
+        const VirtualKeyboard = ({ type = 'text', onInput, onDelete, onSubmit, soundEnabled = true }) => {
             const numericLayout = [
                 ['1', '2', '3'],
                 ['4', '5', '6'],
@@ -151,6 +151,24 @@
             ];
             const layout = type === 'numeric' ? numericLayout : textLayout;
 
+            const playClickSound = () => {
+                if (!soundEnabled) return;
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContext) return;
+                    const ctx = new AudioContext();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.frequency.setValueAtTime(600, ctx.currentTime);
+                    gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.05);
+                } catch (e) {}
+            };
+
             return (
                 <div className="flex flex-col gap-1.5 p-2 bg-slate-800/50 rounded-xl w-full select-none">
                     {layout.map((row, i) => (
@@ -163,7 +181,7 @@
                                 if(key === 'Space') label = 'Space';
                                 
                                 return (
-                                    <button key={key} type="button" onClick={(e) => { e.preventDefault(); if (key === 'Backspace') onDelete(); else if (key === 'Enter') onSubmit(); else if (key === 'Space') onInput(' '); else onInput(key); }}
+                                    <button key={key} type="button" onClick={(e) => { e.preventDefault(); playClickSound(); if (key === 'Backspace') onDelete(); else if (key === 'Enter') onSubmit(); else if (key === 'Space') onInput(' '); else onInput(key); }}
                                         className={`${key === 'Space' ? 'flex-[4]' : 'flex-1'} ${isAction ? 'bg-slate-600 border-slate-500' : 'bg-slate-700 border-slate-600'} border-b-4 active:border-b-0 active:translate-y-1 hover:bg-slate-600 active:bg-slate-500 text-white font-bold py-3 rounded-lg flex items-center justify-center text-lg shadow-md transition-all min-w-[32px]`}
                                     >
                                         {label}
@@ -195,6 +213,12 @@
             const [pinError, setPinError] = useState(false);
             const [isSettingNewPin, setIsSettingNewPin] = useState(false);
             const [keyboardState, setKeyboardState] = useState({ isOpen: false, value: "", type: "text", title: "", onConfirm: null });
+            const [keyboardPos, setKeyboardPos] = useState({ x: 0, y: 0 });
+            const [soundEnabled, setSoundEnabled] = useState(true);
+            const isDragging = useRef(false);
+            const dragOffset = useRef({ x: 0, y: 0 });
+            const [isIdle, setIsIdle] = useState(false);
+            const idleTimerRef = useRef(null);
 
             const [newQuest, setNewQuest] = useState({ task: "", xp: 20, cooldown: 1, repeatable: false, assignedTo: null, icon: "✨", type: 'personal', days: [] });
             const [editingQuestId, setEditingQuestId] = useState(null);
@@ -321,7 +345,7 @@
                 }
             };
 
-            const activeUser = users.find(u => u.id === activeUserId) || users[0];
+            const activeUser = users.find(u => u.id === activeUserId);
 
             // --- CSV Handlers ---
             const downloadCSV = (content, filename) => {
@@ -456,9 +480,62 @@
             };
 
             const openKeyboard = (type, value, title, onConfirm) => {
+                setKeyboardPos({ x: 0, y: 0 });
                 setKeyboardState({ isOpen: true, value: value || "", type, title, onConfirm });
             };
             const closeKeyboard = () => setKeyboardState({ ...keyboardState, isOpen: false });
+
+            const handleDragStart = (e) => {
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                isDragging.current = true;
+                dragOffset.current = { x: clientX - keyboardPos.x, y: clientY - keyboardPos.y };
+            };
+
+            useEffect(() => {
+                const handleMove = (e) => {
+                    if (!isDragging.current) return;
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    setKeyboardPos({ x: clientX - dragOffset.current.x, y: clientY - dragOffset.current.y });
+                };
+                const handleEnd = () => { isDragging.current = false; };
+                window.addEventListener('mousemove', handleMove);
+                window.addEventListener('mouseup', handleEnd);
+                window.addEventListener('touchmove', handleMove, { passive: false });
+                window.addEventListener('touchend', handleEnd);
+                return () => {
+                    window.removeEventListener('mousemove', handleMove); window.removeEventListener('mouseup', handleEnd);
+                    window.removeEventListener('touchmove', handleMove); window.removeEventListener('touchend', handleEnd);
+                };
+            }, []);
+
+            // --- Idle Timer ---
+            const resetIdleTimer = () => {
+                if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+                idleTimerRef.current = setTimeout(() => {
+                    setIsIdle(true);
+                    setIsParentMode(false);
+                    setActiveUserId(null);
+                    setKeyboardState(prev => ({ ...prev, isOpen: false }));
+                    setShowPinModal(false);
+                    setShowPlayerUnlockModal(false);
+                }, 300000); // 5 minutes
+            };
+
+            useEffect(() => {
+                const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+                const handleActivity = () => {
+                    if (isIdle) setIsIdle(false);
+                    resetIdleTimer();
+                };
+                events.forEach(e => window.addEventListener(e, handleActivity));
+                resetIdleTimer();
+                return () => {
+                    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+                    events.forEach(e => window.removeEventListener(e, handleActivity));
+                };
+            }, [isIdle]);
 
             // --- Handlers ---
             const addOrUpdateQuest = (e) => {
@@ -519,6 +596,9 @@
                     setIsParentMode(true);
                     setShowPinModal(false);
                     setPinInput("");
+                    if (!activeUserId && users.length > 0) {
+                        setActiveUserId(users[0].id);
+                    }
                 } else {
                     setPinError(true);
                     setTimeout(() => setPinError(false), 500);
@@ -720,7 +800,7 @@
                 <div className="min-h-screen bg-slate-900 text-slate-100 p-4 md:p-8 font-sans">
                     {isSyncing && <div className="fixed top-4 right-4 z-[100] animate-spin text-yellow-500"><Icon name="refresh-cw" size={20}/></div>}
 
-                    {showCelebration && (
+                    {showCelebration && activeUser && (
                         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/60 backdrop-blur-sm" onClick={() => setShowCelebration(false)}>
                             <div className="bg-yellow-500 text-black p-8 rounded-2xl animate-bounce border-4 border-white flex flex-col items-center shadow-2xl">
                                 <Icon name="trophy" size={64} className="mb-4" />
@@ -748,6 +828,7 @@
                                         onInput={c => setPinInput(prev => (prev + c).slice(0, 4))} 
                                         onDelete={() => setPinInput(prev => prev.slice(0, -1))}
                                         onSubmit={showPinModal ? verifyPin : verifyPlayerPasscode}
+                                        soundEnabled={soundEnabled}
                                     />
                                     <div className="flex gap-3">
                                         <button type="button" onClick={()=>{setShowPinModal(false); setShowPlayerUnlockModal(false);}} className="flex-1 bg-slate-700 font-bold py-3 rounded-xl hover:bg-slate-600">Back</button>
@@ -758,11 +839,14 @@
                     )}
 
                     {keyboardState.isOpen && (
-                        <div className="fixed inset-0 flex items-end sm:items-center justify-center z-[80] bg-slate-950/90 backdrop-blur-md p-4">
-                            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-700 w-full max-w-2xl shadow-2xl flex flex-col gap-4 animate-in slide-in-from-bottom-10">
-                                <div className="flex justify-between items-center">
-                                    <h3 className="text-xl font-black text-white uppercase italic">{keyboardState.title}</h3>
-                                    <button onClick={closeKeyboard} className="p-2 bg-slate-800 rounded-lg text-slate-400"><Icon name="x" size={24}/></button>
+                        <div className="fixed inset-0 z-[80] pointer-events-none flex items-center justify-center">
+                            <div className="bg-slate-900 p-4 rounded-2xl border border-slate-700 w-full max-w-2xl shadow-2xl flex flex-col gap-4 pointer-events-auto touch-none" style={{ transform: `translate(${keyboardPos.x}px, ${keyboardPos.y}px)` }}>
+                                <div className="flex justify-between items-center bg-slate-800/50 p-2 rounded-lg cursor-move" onMouseDown={handleDragStart} onTouchStart={handleDragStart}>
+                                    <div className="flex items-center gap-2 text-slate-400 select-none">
+                                        <Icon name="move" size={16}/>
+                                        <h3 className="text-xl font-black text-white uppercase italic">{keyboardState.title}</h3>
+                                    </div>
+                                    <button onClick={closeKeyboard} className="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white"><Icon name="x" size={24}/></button>
                                 </div>
                                 <div className="bg-slate-950 p-4 rounded-xl border border-slate-800">
                                     <div className="text-2xl font-bold text-white min-h-[2rem] break-words">
@@ -778,20 +862,70 @@
                                         if(keyboardState.onConfirm) keyboardState.onConfirm(keyboardState.value);
                                         closeKeyboard();
                                     }}
+                                    soundEnabled={soundEnabled}
                                 />
                             </div>
                         </div>
                     )}
 
+                    {isIdle ? (
+                        <div className="fixed inset-0 z-[60] bg-slate-950 flex flex-col items-center justify-center p-8 overflow-y-auto animate-in fade-in duration-500" onClick={() => setIsIdle(false)}>
+                            <h1 className="text-4xl md:text-6xl font-black text-yellow-500 uppercase italic mb-12 tracking-tighter animate-pulse text-center">
+                                <Icon name="sword" size={48} className="inline-block mr-4 mb-2"/>
+                                Competitive Chores
+                            </h1>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl">
+                                {quests.filter(q => q.type === 'global').map(quest => (
+                                    <div key={quest.id} className="bg-slate-900/80 border-2 border-orange-500/50 p-6 rounded-3xl flex items-center gap-6 shadow-2xl backdrop-blur-sm">
+                                        <div className="text-5xl filter drop-shadow-lg animate-bounce">{quest.icon}</div>
+                                        <div>
+                                            <h3 className="text-2xl font-black text-white uppercase italic tracking-tight">{quest.task}</h3>
+                                            <div className="flex gap-2 mt-2">
+                                                <span className="bg-yellow-500 text-slate-900 px-3 py-1 rounded-lg font-black uppercase text-xs">+{quest.xp} XP</span>
+                                                <span className="bg-orange-500 text-white px-3 py-1 rounded-lg font-black uppercase text-xs">First to Finish</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {quests.filter(q => q.type === 'global').length === 0 && (
+                                    <div className="col-span-full text-center text-slate-500 font-bold uppercase tracking-widest">No active competitive quests</div>
+                                )}
+                            </div>
+                            <p className="mt-16 text-slate-500 font-black uppercase tracking-[0.5em] animate-pulse">Tap anywhere to wake</p>
+                        </div>
+                    ) : !activeUser ? (
+                        <div className="fixed inset-0 overflow-y-auto bg-slate-900 z-50">
+                            <div className="min-h-full flex flex-col items-center justify-center p-4 animate-in zoom-in-95 duration-300">
+                                <h1 className="text-4xl font-black text-white uppercase italic mb-8 tracking-tighter text-center">Who is playing?</h1>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6 w-full max-w-4xl">
+                                {users.map(u => (
+                                    <button key={u.id} onClick={() => handlePlayerSwitchRequest(u.id)} className="group bg-slate-800 hover:bg-slate-700 p-6 rounded-[2rem] border-2 border-slate-700 hover:border-yellow-500 flex flex-col items-center gap-4 transition-all hover:scale-105 hover:shadow-2xl hover:shadow-yellow-500/20">
+                                        <div className="w-20 h-20 bg-slate-700 group-hover:bg-yellow-500 rounded-full flex items-center justify-center text-slate-400 group-hover:text-slate-900 font-black text-3xl transition-colors">
+                                            {u.name.charAt(0)}
+                                        </div>
+                                        <span className="font-bold text-xl text-slate-300 group-hover:text-white">{u.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="mt-12">
+                                <button onClick={handleParentModeToggle} className="p-4 bg-slate-800 rounded-full text-slate-600 hover:text-white hover:bg-slate-700 transition-all shadow-lg"><Icon name="lock" size={24}/></button>
+                            </div>
+                            </div>
+                        </div>
+                    ) : (
                     <div className="max-w-4xl mx-auto">
                         <header className="flex justify-between items-center mb-6">
                             <h1 className="text-2xl font-black italic text-yellow-500 uppercase tracking-tighter flex items-center gap-2">
                                 <Icon name="sword" size={24} /> Chore Quest
                             </h1>
-                            <button onClick={handleParentModeToggle} className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all ${isParentMode ? 'bg-red-600 shadow-lg text-white' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white'}`}>
-                                <Icon name={isParentMode ? "unlock" : "lock"} size={16}/>
-                                {isParentMode ? "Exit Parent Mode" : "Parent Mode"}
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setSoundEnabled(!soundEnabled)} className={`p-2 rounded-full transition-all ${soundEnabled ? 'bg-slate-700 text-yellow-500' : 'bg-slate-800 text-slate-500'}`}><Icon name={soundEnabled ? "volume-2" : "volume-x"} size={20} /></button>
+                                <button onClick={handleParentModeToggle} className={`flex items-center gap-2 px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all ${isParentMode ? 'bg-red-600 shadow-lg text-white' : 'bg-slate-800 border border-slate-700 text-slate-400 hover:text-white'}`}>
+                                    <Icon name={isParentMode ? "unlock" : "lock"} size={16}/>
+                                    {isParentMode ? "Exit" : "Parent Mode"}
+                                </button>
+                                <button onClick={() => setActiveUserId(null)} className="p-2 rounded-full bg-slate-800 text-red-500 hover:bg-slate-700 transition-all" title="Logout"><Icon name="log-out" size={20} /></button>
+                            </div>
                         </header>
 
                         <div className="flex flex-wrap gap-2 mb-8 bg-slate-800/40 p-2 rounded-2xl border border-slate-800">
@@ -1117,6 +1251,7 @@
                             </div>
                         )}
                     </div>
+                    )}
                     <footer className="mt-12 mb-8 text-center text-[10px] font-black uppercase tracking-[0.4em] text-slate-600">
                         Kingdom: {currentAppId} | Status: Connected to Cloud
                     </footer>
