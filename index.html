@@ -116,8 +116,31 @@
             "🎨", "🎵", "🎬", "🌳", "🌻", "🦕", "🦈", "🦋", "🔨", "🔧", 
             "🔦", "📷", "📱", "💻", "⌚", "🎒", "🕶️", "🐉", "🏰", "🗝️", 
             "🗺️", "🏹", "🧙‍♂️", "🧚‍♀️", "🎈", "🎉", "🎁", "🏆", "🥇", "💯", 
-            "❤️", "⭐", "🌙", "☀️", "🚀", "🛸", "👾", "🤖", "🎃", "🎄"
+            "❤️", "⭐", "🌙", "☀️", "🚀", "🛸", "👾", "🤖", "🎃", "🎄",
+            "🌪️", "🍳", "🥞", "🗂️"
         ];
+
+        const LOOT_TABLES = {
+            common: [
+                { text: "Shiny Rock", value: 1 }, { text: "Bent Spoon", value: 1 },
+                { text: "Colorful Button", value: 2 }, { text: "Old Coin", value: 3 },
+                { text: "Dust Bunny Fluff", value: 1 }, { text: "Lost Sock", value: 5 },
+            ],
+            rare: [
+                { text: "Four Leaf Clover", value: 15 }, { text: "Golden Bone", value: 20 },
+                { text: "Shiny Faucet Handle", value: 25 }, { text: "Chef's Secret Spice", value: 30 },
+                { text: "Crystal Clear Pane", value: 18 }, { text: "Unusually Clean Rag", value: 12 },
+            ],
+            epic: [
+                { text: "Ancient Toy", value: 50 }, { text: "Gemstone of Power", value: 75 },
+                { text: "Dragon Scale", value: 80 }, { text: "Phoenix Feather", value: 85 },
+            ],
+            legendary: [
+                { text: "Mythical Power Tool", value: 100 },
+                { text: "Crown of the Chore King", value: 200 },
+                { text: "Deed to the Living Room", value: 150 },
+            ]
+        };
 
         const AVATAR_LIBRARY = [
             "🙂", "😎", "🤠", "🤡", "👻", "👽", "🤖", "💩", "🐱", "🐶", 
@@ -138,24 +161,61 @@
 
         const WEEKLY_BONUS = 100;
 
-        // type: 'global' (competitive) or 'personal' (individual)
-        // days: array of integers 0-6 (Sun-Sat), empty = every day
         const DEFAULT_QUESTS = [
-            { id: 1, task: "Slay the Dust Bunnies", xp: 10, gems: 5, icon: "🧹", repeatable: true, cooldown: 1, assignedTo: null, type: 'personal', days: [], loot: "", lootRarity: "common", lootValue: 0 },
-            { id: 2, task: "The Great Laundry Fold", xp: 20, gems: 10, icon: "👕", repeatable: false, cooldown: 0, assignedTo: null, type: 'global', days: [], loot: "Lost Sock", lootRarity: "common", lootValue: 5 },
+            { id: 1, task: "Slay the Dust Bunnies", xp: 10, gems: 5, icon: "🧹", repeatable: true, cooldown: 1, assignedTo: null, type: 'personal', days: [], loot: "Dust Bunny Fluff", lootRarity: "common", lootValue: 1, lootPoolRarity: "" },
+            { id: 2, task: "The Great Laundry Fold", xp: 20, gems: 10, icon: "👕", repeatable: false, cooldown: 0, assignedTo: null, type: 'global', days: [], loot: "Lost Sock", lootRarity: "common", lootValue: 5, lootPoolRarity: "" },
+            { id: 3, task: "Dishwasher Defender", xp: 15, gems: 8, icon: "🍽️", repeatable: true, cooldown: 1, assignedTo: null, type: 'personal', days: [], loot: "Sparkling Plate", lootRarity: "common", lootValue: 2, lootPoolRarity: "" },
+            { id: 4, task: "Trash Titan", xp: 15, gems: 5, icon: "🗑️", repeatable: true, cooldown: 1, assignedTo: null, type: 'personal', days: [], loot: "Recycled Gem", lootRarity: "common", lootValue: 3, lootPoolRarity: "" },
+            { id: 5, task: "Pet Patrol", xp: 25, gems: 15, icon: "🐕", repeatable: true, cooldown: 1, assignedTo: null, type: 'personal', days: [], loot: "Golden Bone", lootRarity: "rare", lootValue: 20, lootPoolRarity: "" },
+            { id: 6, task: "Bedroom Blitz", xp: 50, gems: 25, icon: "🛌", repeatable: false, cooldown: 3, assignedTo: null, type: 'personal', days: [], loot: "Ancient Toy", lootRarity: "epic", lootValue: 50, lootPoolRarity: "" },
+            { id: 7, task: "Garden Guardian", xp: 20, gems: 10, icon: "🌿", repeatable: true, cooldown: 2, assignedTo: null, type: 'personal', days: [], loot: "Four Leaf Clover", lootRarity: "rare", lootValue: 15, lootPoolRarity: "" },
+            { id: 8, task: "Vacuum Voyage", xp: 30, gems: 15, icon: "🌪️", repeatable: true, cooldown: 2, assignedTo: null, type: 'personal', days: [], loot: "Mysterious Crumb", lootRarity: "common", lootValue: 2, lootPoolRarity: "" },
+            { id: 9, task: "Bathroom Buccaneer", xp: 40, gems: 20, icon: "🚽", repeatable: true, cooldown: 3, assignedTo: null, type: 'personal', days: [], loot: "Shiny Faucet Handle", lootRarity: "rare", lootValue: 25, lootPoolRarity: "" },
+            { id: 10, task: "The Toy Tidy-up", xp: 25, gems: 10, icon: "🧸", repeatable: true, cooldown: 1, assignedTo: null, type: 'personal', days: [], loot: "Pristine Action Figure", lootRarity: "common", lootValue: 8, lootPoolRarity: "" },
+            { id: 11, task: "Mealtime Mage (Help with Dinner)", xp: 35, gems: 15, icon: "🍳", repeatable: true, cooldown: 1, assignedTo: null, type: 'personal', days: [], loot: "Chef's Secret Spice", lootRarity: "rare", lootValue: 30, lootPoolRarity: "" },
+            { id: 12, task: "Homework Hero", xp: 20, gems: 5, icon: "📚", repeatable: true, cooldown: 1, assignedTo: null, type: 'personal', days: [1,2,3,4,5], loot: "A+ Paper", lootRarity: "common", lootValue: 1, lootPoolRarity: "" },
+            { id: 13, task: "The Legendary Garage Gauntlet", xp: 100, gems: 50, icon: "🚗", repeatable: false, cooldown: 7, assignedTo: null, type: 'global', days: [6,0], loot: "Mythical Power Tool", lootRarity: "legendary", lootValue: 100, lootPoolRarity: "" },
+            { id: 14, task: "Desk De-clutter", xp: 15, gems: 5, icon: "🗂️", repeatable: true, cooldown: 2, assignedTo: null, type: 'personal', days: [], loot: "Forgotten Pen", lootRarity: "common", lootValue: 1, lootPoolRarity: "" },
+            { id: 15, task: "Window Warlock", xp: 25, gems: 10, icon: "✨", repeatable: true, cooldown: 4, assignedTo: null, type: 'personal', days: [], loot: "Crystal Clear Pane", lootRarity: "rare", lootValue: 18, lootPoolRarity: "" },
+        ];
+
+        const QUEST_TEMPLATES = [
+            { task: "Clean Bedroom", xp: 50, gems: 25, icon: "🛏️", type: 'personal', days: [], lootPoolRarity: 'epic' },
+            { task: "Wash Dishes", xp: 20, gems: 10, icon: "🍽️", type: 'personal', days: [], lootPoolRarity: 'common' },
+            { task: "Take out Trash", xp: 15, gems: 5, icon: "🗑️", type: 'personal', days: [], lootPoolRarity: 'common' },
+            { task: "Walk the Dog", xp: 30, gems: 15, icon: "🐕", type: 'personal', days: [], lootPoolRarity: 'rare' },
+            { task: "Do Homework", xp: 40, gems: 20, icon: "📚", type: 'personal', days: [1,2,3,4,5], lootPoolRarity: 'rare' },
+            { task: "Vacuum House", xp: 45, gems: 20, icon: "🌪️", type: 'personal', days: [6], lootPoolRarity: 'rare' },
         ];
 
         const DEFAULT_REWARDS = [
-            { id: 1, title: "Pick the Friday Movie", level: 2, type: "primary", interval: 0 },
-            { id: 2, title: "Extra 15m Screen Time", level: 2, type: "secondary", interval: 0 },
-            { id: 3, title: "Stay Up 30m Late", level: 3, type: "primary", interval: 0 },
-            { id: 4, title: "Small Toy Chest Visit", level: 4, type: "interval", interval: 2 },
-            { id: 5, title: "Ice Cream Treat", type: "shop", cost: 50, quantity: 10, shopCooldown: 1, shopScope: 'global' },
+            { id: 1, title: "Pick the Friday Movie", level: 2, type: "primary", interval: 0, icon: "🎬" },
+            { id: 2, title: "Extra 15m Screen Time", level: 2, type: "secondary", interval: 0, icon: "📱" },
+            { id: 3, title: "Stay Up 30m Late", level: 3, type: "primary", interval: 0, icon: "🌙" },
+            { id: 4, title: "Small Toy Chest Visit", level: 4, type: "interval", interval: 2, icon: "🧸" },
+            { id: 5, title: "Ice Cream Treat", type: "shop", cost: 50, quantity: 10, shopCooldown: 1, shopScope: 'global', icon: "🍦", category: "Treats" },
+            { id: 6, title: "Mystery Snack Box", type: "shop", cost: 25, quantity: -1, shopCooldown: 0, shopScope: 'personal', icon: "📦", isMystery: true, bundleLoot: "Granola Bar, Fruit Gummy, Juice Box, Pretzel Pack", category: "Treats" },
+            { id: 7, title: "Sticker Pack", type: "shop", cost: 40, quantity: -1, shopCooldown: 0, shopScope: 'personal', icon: "⭐", isMystery: false, bundleLoot: "Shiny Star, Cool Dragon, Cute Cat, Laser Sword", category: "Toys" },
+            { id: 8, title: "Skip One Chore", type: "shop", cost: 500, quantity: 1, shopCooldown: 7, shopScope: 'personal', icon: "🎟️", category: "Power-ups", rarity: "legendary" },
+            { id: 9, title: "Pizza Night Veto", type: "shop", cost: 300, quantity: 1, shopCooldown: 14, shopScope: 'global', icon: "🍕", category: "Power-ups", rarity: "epic" },
+            { id: 10, title: "New Book", type: "shop", cost: 150, quantity: -1, shopCooldown: 3, shopScope: 'personal', icon: "📚", category: "Toys", rarity: "rare" },
+            { id: 11, title: "Golden Controller", type: "shop", cost: 200, quantity: 1, shopCooldown: 7, shopScope: 'global', icon: "🎮", category: "Power-ups", rarity: "epic" },
+            { id: 12, title: "Choose Dinner One Night", level: 5, type: "primary", interval: 0, icon: "🍔" },
+            { id: 13, title: "Extra 30m Screen Time", level: 6, type: "secondary", interval: 0, icon: "📱" },
+            { id: 14, title: "Big Toy Chest Visit", level: 8, type: "interval", interval: 4, icon: "🎁" },
+            { id: 15, title: "New App/Game ($5 limit)", level: 10, type: "primary", interval: 0, icon: "👾" },
+            { id: 16, title: "Legendary Loot Box", type: "shop", cost: 250, quantity: -1, shopCooldown: 7, shopScope: 'personal', icon: "🗝️", isMystery: true, bundleLoot: "Gemstone of Power, Dragon Scale, Phoenix Feather", category: "Loot Boxes", rarity: "legendary" },
+            { id: 17, title: "Rare Loot Box", type: "shop", cost: 100, quantity: -1, shopCooldown: 1, shopScope: 'personal', icon: "🗝️", isMystery: true, bundleLoot: "Enchanted Key, Griffin Claw, Vial of Starlight", category: "Loot Boxes", rarity: "rare" },
+            { id: 18, title: "Common Junk Box", type: "shop", cost: 10, quantity: -1, shopCooldown: 0, shopScope: 'personal', icon: "📦", isMystery: true, bundleLoot: "Shiny Rock, Bent Spoon, Colorful Button, Old Coin", category: "Loot Boxes", rarity: "common" },
+            { id: 19, title: "One Hour of Video Games", type: "shop", cost: 120, quantity: -1, shopCooldown: 1, shopScope: 'personal', icon: "🎮", category: "Activities", rarity: "rare" },
+            { id: 20, title: "Bake Cookies with a Parent", type: "shop", cost: 80, quantity: 5, shopCooldown: 3, shopScope: 'global', icon: "🍪", category: "Activities" },
+            { id: 21, title: "Double XP Potion (1 Day)", type: "shop", cost: 200, quantity: 3, shopCooldown: 7, shopScope: 'personal', icon: "🧪", category: "Power-ups", rarity: "epic" },
+            { id: 22, title: "Choose Weekend Breakfast", type: "shop", cost: 75, quantity: 10, shopCooldown: 1, shopScope: 'global', icon: "🥞", category: "Treats" },
         ];
 
         const DEFAULT_USERS = [
             
-            { id: 'u1', name: "Player 1", avatar: "🙂", themeColor: "yellow", passcode: "0000", totalXP: 0, level: 1, gems: 0, completedIds: [], pendingIds: [], cooldowns: {}, claimedRewards: [], fulfilledRewards: [], forceActiveIds: [], history: [], notifications: [], streak: 0, lastQuestDate: null, weeklyProgress: 0, lastWeeklyReset: null, lastLoginBonusDate: null, inventory: [], shopCooldowns: {}, dailyPurchases: {}, tradeRequests: [] }
+            { id: 'u1', name: "Player 1", avatar: "🙂", themeColor: "yellow", passcode: "0000", totalXP: 0, level: 1, gems: 0, completedIds: [], pendingIds: [], cooldowns: {}, claimedRewards: [], fulfilledRewards: [], forceActiveIds: [], history: [], notifications: [], achievements: [], streak: 0, lastQuestDate: null, weeklyProgress: 0, lastWeeklyReset: null, lastLoginBonusDate: null, inventory: [], shopCooldowns: {}, dailyPurchases: {}, tradeRequests: [] }
         ];
 
         // Safe Lucide Icon Component
@@ -325,11 +385,11 @@
             const [isCompactMode, setIsCompactMode] = useState(() => localStorage.getItem('chore_quest_compact') === 'true');
             const [weeklyGoal, setWeeklyGoal] = useState(10);
             const [xpAnimating, setXpAnimating] = useState(false);
-
-            const [newQuest, setNewQuest] = useState({ task: "", xp: 20, gems: 5, cooldown: 1, repeatable: false, assignedTo: null, icon: "✨", type: 'personal', days: [], rotatingIds: [], loot: "", lootRarity: "common", lootValue: 0 });
+            const [newQuest, setNewQuest] = useState({ task: "", xp: 20, gems: 5, cooldown: 1, repeatable: false, assignedTo: null, icon: "✨", type: 'personal', days: [], rotatingIds: [], loot: "", lootRarity: "common", lootValue: 0, lootPoolRarity: "" });
             const [editingQuestId, setEditingQuestId] = useState(null);
             const [newReward, setNewReward] = useState({ title: "", level: 2, type: "primary", interval: 2, cost: 0, quantity: -1, shopCooldown: 1, shopScope: 'personal', maxDaily: 0, salePrice: -1, buybackPrice: 0, isFeatured: false, bundleLoot: "", minLevel: 1, isMystery: false, category: "General", rarity: "common", expirationDate: "", icon: "🎁" });
             const [editingRewardId, setEditingRewardId] = useState(null);
+
             const [questFilter, setQuestFilter] = useState('today'); // 'today', 'all', 'history'
             const [showAvatarModal, setShowAvatarModal] = useState(false);
             const [showThemeModal, setShowThemeModal] = useState(false);
@@ -338,8 +398,7 @@
             const [selectedQuest, setSelectedQuest] = useState(null);
             const [selectedInventoryItem, setSelectedInventoryItem] = useState(null);
             const [wishlist, setWishlist] = useState([]);
-            const [shopState, setShopState] = useState({});
-            const [transactions, setTransactions] = useState([]);
+            const [shopState, setShopState] = useState({});            
             const [transactionFilter, setTransactionFilter] = useState('all');
             const [bulkSellMode, setBulkSellMode] = useState(false);
             const [shopCategoryFilter, setShopCategoryFilter] = useState('all');
@@ -351,7 +410,11 @@
             const [cropTransform, setCropTransform] = useState({ x: 0, y: 0, zoom: 1 });
             const [previewItem, setPreviewItem] = useState(null);
             const [giveItemState, setGiveItemState] = useState({ isOpen: false, text: "", rarity: "common", value: 0 });
+            const [activityLogUser, setActivityLogUser] = useState(null);
+            const [activityLogFilter, setActivityLogFilter] = useState('all');
             const [achievementState, setAchievementState] = useState({ isOpen: false, userId: "", text: "" });
+            const [confirmSellItem, setConfirmSellItem] = useState(null);
+            const [transactions, setTransactions] = useState([]);
             
             const [showCelebration, setShowCelebration] = useState(false);
             const [now, setNow] = useState(Date.now());
@@ -415,6 +478,11 @@
                             forceActiveIds: u.forceActiveIds || [],
                             streak: u.streak || 0,
                             lastQuestDate: u.lastQuestDate || null,
+                            achievements: u.achievements || (u.notifications || []).filter(n => n.type === 'achievement' || n.message.includes("LEVEL UP")).map(n => ({
+                                id: n.id,
+                                message: n.message.includes("LEVEL UP") ? n.message.replace("LEVEL UP! You ", "") : n.message,
+                                timestamp: n.timestamp
+                            })),
                             weeklyProgress: u.weeklyProgress || 0,
                             lastWeeklyReset: u.lastWeeklyReset || null,
                             lastLoginBonusDate: u.lastLoginBonusDate || null,                           
@@ -447,6 +515,11 @@
                                 forceActiveIds: u.forceActiveIds || [],
                                 streak: u.streak || 0,
                                 lastQuestDate: u.lastQuestDate || null,
+                                achievements: u.achievements || (u.notifications || []).filter(n => n.type === 'achievement' || n.message.includes("LEVEL UP")).map(n => ({
+                                    id: n.id,
+                                    message: n.message.includes("LEVEL UP") ? n.message.replace("LEVEL UP! You ", "") : n.message,
+                                    timestamp: n.timestamp
+                                })),
                                 weeklyProgress: u.weeklyProgress || 0,
                                 lastWeeklyReset: u.lastWeeklyReset || null,
                                 lastLoginBonusDate: u.lastLoginBonusDate || null,
@@ -574,9 +647,9 @@
             };
 
             const exportQuestsCSV = () => {
-                const headers = ["id", "task", "xp", "gems", "icon", "repeatable", "cooldown", "assignedTo", "type", "days", "rotatingIds", "loot", "lootRarity", "lootValue"];
+                const headers = ["id", "task", "xp", "gems", "icon", "repeatable", "cooldown", "assignedTo", "type", "days", "rotatingIds", "loot", "lootRarity", "lootValue", "lootPoolRarity"];
                 const rows = quests.map(q => [
-                    q.id, `"${q.task}"`, q.xp, q.gems || 0, q.icon, q.repeatable, q.cooldown, q.assignedTo || "", q.type || "personal", `"${(q.days || []).join(',')}"`, `"${(q.rotatingIds || []).join(',')}"`, `"${(q.loot || "").replace(/"/g, '""')}"`, q.lootRarity || "common", q.lootValue || 0
+                    q.id, `"${q.task}"`, q.xp, q.gems || 0, q.icon, q.repeatable, q.cooldown, q.assignedTo || "", q.type || "personal", `"${(q.days || []).join(',')}"`, `"${(q.rotatingIds || []).join(',')}"`, `"${(q.loot || "").replace(/"/g, '""')}"`, q.lootRarity || "common", q.lootValue || 0, q.lootPoolRarity || ""
                 ]);
                 const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
                 downloadCSV(csvContent, 'quests_export.csv');
@@ -604,7 +677,7 @@
                         const cleanParts = parts.map(p => p.replace(/^"|"$/g, '').trim());
                         // Fallback parsing if regex fails on simple split
                         const simpleParts = line.split(',');
-                        const p = cleanParts.length >= 13 ? cleanParts : simpleParts;
+                        const p = cleanParts.length >= 14 ? cleanParts : simpleParts;
                         
                         return {
                             id: Number(p[0]) || Date.now(),
@@ -620,7 +693,8 @@
                             rotatingIds: p[10] ? p[10].split(',').map(s => s.trim()).filter(s => s) : [],
                             loot: p[11] ? p[11].replace(/^"|"$/g, '').trim() : "",
                             lootRarity: p[12] || "common",
-                            lootValue: Number(p[13]) || 0
+                            lootValue: Number(p[13]) || 0,
+                            lootPoolRarity: p[14] || ""
                         };
                     });
                     setQuests(newQuests);
@@ -715,7 +789,7 @@
 
             const openKeyboard = (type, value, title, onConfirm) => {
                 setKeyboardPos({ x: 0, y: 0 });
-                setKeyboardState({ isOpen: true, value: value || "", type, title, onConfirm });
+                setKeyboardState({ isOpen: true, value: String(value ?? ''), type, title, onConfirm });
             };
             const closeKeyboard = () => setKeyboardState({ ...keyboardState, isOpen: false });
 
@@ -891,8 +965,13 @@
                     updatedQuests = [...quests, { ...questToSave, id: Date.now() }];
                 }
                 setQuests(updatedQuests);
-                setNewQuest({ task: "", xp: 20, gems: 5, cooldown: 1, repeatable: false, assignedTo: null, icon: "✨", type: 'personal', days: [], rotatingIds: [], loot: "", lootRarity: "common", lootValue: 0 });
+                setNewQuest({ task: "", xp: 20, gems: 5, cooldown: 1, repeatable: false, assignedTo: null, icon: "✨", type: 'personal', days: [], rotatingIds: [], loot: "", lootRarity: "common", lootValue: 0, lootPoolRarity: "" });
                 saveGameState(users, updatedQuests, rewards, parentPin, vacationMode, vacationStartTime, weeklyGoal, wishlist, shopState);
+            };
+
+            const cancelEditQuest = () => {
+                setEditingQuestId(null);
+                setNewQuest({ task: "", xp: 20, gems: 5, cooldown: 1, repeatable: false, assignedTo: null, icon: "✨", type: 'personal', days: [], rotatingIds: [], loot: "", lootRarity: "common", lootValue: 0, lootPoolRarity: "" });
             };
 
             const editQuest = (quest) => {
@@ -920,6 +999,14 @@
                 });
                 
                 saveGameState(users, quests, updatedRewards, parentPin, vacationMode, vacationStartTime, weeklyGoal, wishlist, shopState);
+            };
+
+            const cancelEditReward = () => {
+                setEditingRewardId(null);
+                const defaultType = parentTab === 'store' ? 'shop' : 'primary';
+                setNewReward({ 
+                    title: "", level: 2, type: defaultType, interval: 2, cost: 0, quantity: -1, shopCooldown: 1, shopScope: 'personal', maxDaily: 0, salePrice: -1, buybackPrice: 0, isFeatured: false, bundleLoot: "", minLevel: 1, isMystery: false, category: "General", rarity: "common", expirationDate: "", icon: "🎁" 
+                });
             };
 
             const playCoinSound = () => {
@@ -1492,6 +1579,15 @@
                 const quest = quests.find(q => q.id === questId);
                 if (!targetUser || !quest) return;
                 
+                let generatedLoot = null;
+                if (quest.lootPoolRarity && LOOT_TABLES[quest.lootPoolRarity]) {
+                    const pool = LOOT_TABLES[quest.lootPoolRarity];
+                    const randomLoot = pool[Math.floor(Math.random() * pool.length)];
+                    generatedLoot = { id: Date.now(), text: randomLoot.text, value: randomLoot.value, rarity: quest.lootPoolRarity, timestamp: Date.now() };
+                } else if (quest.loot) {
+                    generatedLoot = { id: Date.now(), text: quest.loot, rarity: quest.lootRarity || 'common', value: quest.lootValue || 0, timestamp: Date.now() };
+                }
+
                 let updatedQuests = quests;
                 // Rotating Logic: Advance to next player
                 if (quest.type === 'rotating' && quest.rotatingIds && quest.rotatingIds.length > 0) {
@@ -1565,22 +1661,21 @@
                     newNotifications.unshift({ id: Date.now() + 1, message: `LEVEL UP! You reached Level ${newLevel}!`, type: 'celebration', timestamp: Date.now() });
                     playLevelUpSound();
                 }
-                if (quest.loot) newNotifications.unshift({ id: Date.now() + 2, message: `Loot Found: ${quest.loot}`, type: 'celebration', timestamp: Date.now() });
+                if (generatedLoot) newNotifications.unshift({ id: Date.now() + 2, message: `Loot Found: ${generatedLoot.text}`, type: 'celebration', timestamp: Date.now() });
                 if (isWeeklyGoalReached) newNotifications.unshift({ id: Date.now() + 3, message: `Weekly Goal Met! +${WEEKLY_BONUS} XP Bonus!`, type: 'celebration', timestamp: Date.now() });
                 if (streakNotification) newNotifications.unshift(streakNotification);
+
+                const newAchievements = [];
+                if (newLevel > targetUser.level) {
+                    newAchievements.push({ id: Date.now() + 1, message: `reached Level ${newLevel}!`, timestamp: Date.now() });
+                }
 
                 const updatedUsers = users.map(u => {
                     if (u.id === userId) {
                         const cds = { ...u.cooldowns };
                         if (quest.repeatable) cds[questId] = Date.now() + (quest.cooldown * 86400000);
                         
-                        const newInventory = quest.loot ? [{ 
-                            id: Date.now(), 
-                            text: quest.loot, 
-                            rarity: quest.lootRarity || 'common', 
-                            value: quest.lootValue || 0, 
-                            timestamp: Date.now() 
-                        }, ...(u.inventory || [])] : (u.inventory || []);
+                        const newInventory = generatedLoot ? [generatedLoot, ...(u.inventory || [])] : (u.inventory || []);
 
                         return {
                             ...u, totalXP: newXP, gems: newGems, level: newLevel,
@@ -1589,6 +1684,7 @@
                             cooldowns: cds,
                             history: [historyEntry, ...(u.history || [])].slice(0, 50),
                             notifications: [...newNotifications, ...(u.notifications || [])].slice(0, 20),
+                            achievements: [...newAchievements, ...(u.achievements || [])],
                             
                             streak: newStreak,
                             lastQuestDate: Date.now(),
@@ -1703,7 +1799,7 @@
                 if (!name || !name.trim()) return;
                 const id = 'u' + Date.now();
                 
-                const u = [...users, { id, name: name.trim(), avatar: "🙂", themeColor: "yellow", passcode: "0000", totalXP: 0, level: 1, gems: 0, completedIds: [], pendingIds: [], cooldowns: {}, claimedRewards: [], fulfilledRewards: [], forceActiveIds: [], isDeactivated: false, history: [], notifications: [], streak: 0, lastQuestDate: null, inventory: [], shopCooldowns: {}, dailyPurchases: {}, tradeRequests: [] }];
+                const u = [...users, { id, name: name.trim(), avatar: "🙂", themeColor: "yellow", passcode: "0000", totalXP: 0, level: 1, gems: 0, completedIds: [], pendingIds: [], cooldowns: {}, claimedRewards: [], fulfilledRewards: [], forceActiveIds: [], isDeactivated: false, history: [], notifications: [], achievements: [], streak: 0, lastQuestDate: null, inventory: [], shopCooldowns: {}, dailyPurchases: {}, tradeRequests: [] }];
                 setUsers(u); saveGameState(u, quests, rewards, parentPin, vacationMode, vacationStartTime, weeklyGoal, wishlist, shopState);
             };
 
@@ -1794,6 +1890,7 @@
             };
 
             const handleSellItem = (userId, item) => {
+                const user = users.find(u => u.id === userId);
                 const updatedUsers = users.map(u => {
                     if (u.id === userId) {
                         const newInventory = u.inventory.filter(i => i.id !== item.id);
@@ -1802,8 +1899,21 @@
                     }
                     return u;
                 });
+
+                const newTx = {
+                    id: Date.now(),
+                    date: Date.now(),
+                    item: `Sold: ${item.text}`,
+                    cost: -(item.value || 0),
+                    user: user ? user.name : "Unknown",
+                    userId: userId,
+                    type: 'sell_inventory'
+                };
+                const updatedTransactions = [newTx, ...transactions].slice(0, 200);
+                setTransactions(updatedTransactions);
+
                 setUsers(updatedUsers);
-                saveGameState(updatedUsers, quests, rewards, parentPin, vacationMode, vacationStartTime, weeklyGoal, wishlist, shopState);
+                saveGameState(updatedUsers, quests, rewards, parentPin, vacationMode, vacationStartTime, weeklyGoal, wishlist, shopState, updatedTransactions);
                 setSelectedInventoryItem(null);
                 if (item.value > 0) playCoinSound();
             };
@@ -1817,9 +1927,22 @@
                     value: parseInt(giveItemState.value) || 0,
                     timestamp: Date.now()
                 };
+
+                const newTx = {
+                    id: Date.now(),
+                    date: Date.now(),
+                    item: `Received: ${newItem.text}`,
+                    cost: 0,
+                    user: activeUser.name,
+                    userId: activeUser.id,
+                    type: 'gift_received'
+                };
+                const updatedTransactions = [newTx, ...transactions].slice(0, 200);
+                setTransactions(updatedTransactions);
+
                 const updatedUsers = users.map(u => u.id === activeUser.id ? { ...u, inventory: [newItem, ...(u.inventory || [])] } : u);
                 setUsers(updatedUsers);
-                saveGameState(updatedUsers, quests, rewards, parentPin, vacationMode, vacationStartTime, weeklyGoal, wishlist, shopState);
+                saveGameState(updatedUsers, quests, rewards, parentPin, vacationMode, vacationStartTime, weeklyGoal, wishlist, shopState, updatedTransactions);
                 setGiveItemState({ isOpen: false, text: "", rarity: "common", value: 0 });
                 playCoinSound();
             };
@@ -1828,13 +1951,19 @@
                 if (!achievementState.userId || !achievementState.text.trim()) return;
                 const updatedUsers = users.map(u => {
                     if (u.id === achievementState.userId) {
+                        const newAchievement = {
+                            id: Date.now(),
+                            message: achievementState.text.trim(),
+                            timestamp: Date.now()
+                        };
                         return {
                             ...u,
+                            achievements: [newAchievement, ...(u.achievements || [])],
                             notifications: [{ 
-                                id: Date.now(), 
+                                id: newAchievement.id, 
                                 message: achievementState.text.trim(), 
                                 type: 'achievement', 
-                                timestamp: Date.now() 
+                                timestamp: newAchievement.timestamp 
                             }, ...(u.notifications || [])].slice(0, 20)
                         };
                     }
@@ -1850,7 +1979,7 @@
                     if (u.id === userId) {
                         return {
                             ...u,
-                            notifications: (u.notifications || []).filter(n => n.id !== notificationId)
+                            achievements: (u.achievements || []).filter(n => n.id !== notificationId)
                         };
                     }
                     return u;
@@ -1887,9 +2016,8 @@
             const totalPending = pendingApprovalsCount + pendingFulfillCount;
 
             const recentAchievements = users.flatMap(u => 
-                (u.notifications || [])
-                .filter(n => n.type === 'achievement' || n.message.includes("LEVEL UP"))
-                .map(n => ({ ...n, userName: u.name, userAvatar: u.avatar, userId: u.id }))
+                (u.achievements || [])
+                .map(a => ({ ...a, userName: u.name, userAvatar: u.avatar, userId: u.id }))
             ).sort((a, b) => b.timestamp - a.timestamp).slice(0, 3);
             
             const renderLiveGame = () => (
@@ -2082,7 +2210,7 @@
                                 <div className="flex bg-slate-800 rounded-lg p-1">
                                     <button onClick={()=>setQuestFilter('today')} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${questFilter === 'today' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>Today</button>
                                     <button onClick={()=>setQuestFilter('all')} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${questFilter === 'all' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>All</button>
-                                    <button onClick={()=>setQuestFilter('history')} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${questFilter === 'history' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>History</button>
+                                    <button onClick={()=>setQuestFilter('history')} className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${questFilter === 'history' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}>Log</button>
                                 </div>
                             </div>
                             {questFilter === 'history' ? (
@@ -2112,16 +2240,18 @@
                                 const globalCompleter = quest.type === 'global' ? users.find(u => (u.completedIds || []).includes(quest.id) || (u.pendingIds || []).includes(quest.id)) : null;
                                 const isLockedGlobally = globalCompleter && globalCompleter.id !== activeUser?.id;
                                 const lockedByOther = isLockedGlobally && !quest.repeatable;
+                                const isScheduledToday = !quest.days || quest.days.length === 0 || quest.days.includes(currentDayIndex);
                                 const rotatingUser = quest.type === 'rotating' ? users.find(u => u.id === quest.assignedTo) : null;
+                                const isInactiveSchedule = !isScheduledToday && !isForceActive;
 
                                 return (
-                                    <div key={quest.id} className={`${isCompactMode ? 'p-3 rounded-xl gap-2' : 'p-5 rounded-3xl gap-4'} border-2 transition-all flex flex-col sm:flex-row sm:items-center ${isPending ? 'bg-yellow-500/5 border-yellow-500/40 animate-pulse' : lockedByOther ? `opacity-40 grayscale bg-slate-950 border-slate-800 ${isParentMode ? '' : 'pointer-events-none'}` : isOnCooldown ? 'opacity-70 grayscale bg-slate-800/50' : 'bg-slate-800 border-slate-700 shadow-xl'}`}>
+                                    <div key={quest.id} className={`${isCompactMode ? 'p-3 rounded-xl gap-2' : 'p-5 rounded-3xl gap-4'} border-2 transition-all flex flex-col sm:flex-row sm:items-center ${isPending ? 'bg-yellow-500/5 border-yellow-500/40 animate-pulse' : lockedByOther ? `opacity-40 grayscale bg-slate-950 border-slate-800 ${isParentMode ? '' : 'pointer-events-none'}` : isOnCooldown ? 'opacity-70 grayscale bg-slate-800/50' : isInactiveSchedule ? 'opacity-60 bg-slate-900 border-slate-800 border-dashed' : 'bg-slate-800 border-slate-700 shadow-xl'}`}>
                                         <div className="flex items-center gap-4 flex-1 w-full cursor-pointer" onClick={() => setSelectedQuest(quest)}>
                                             <div className={`${isCompactMode ? 'text-2xl' : 'text-4xl'} filter drop-shadow-sm`}>
                                                 {quest.icon?.startsWith('data:') ? <img src={quest.icon} className={`${isCompactMode ? 'w-8 h-8' : 'w-12 h-12'} object-contain`} alt="icon"/> : quest.icon}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <h3 className={`font-black ${isCompactMode ? 'text-base' : 'text-xl'} tracking-tight text-white truncate ${lockedByOther ? 'line-through text-slate-600' : ''}`}>{quest.task} {isForceActive && <span className="text-[10px] text-yellow-500 uppercase tracking-wider ml-2">Override Active</span>}</h3>
+                                                <h3 className={`font-black ${isCompactMode ? 'text-base' : 'text-xl'} tracking-tight text-white truncate ${lockedByOther ? 'line-through text-slate-600' : ''}`}>{quest.task} {isForceActive && <span className="text-[10px] text-yellow-500 uppercase tracking-wider ml-2">Override Active</span>} {!isScheduledToday && !isForceActive && <span className="text-[10px] text-slate-500 uppercase tracking-wider ml-2 border border-slate-700 px-1 rounded">Scheduled: {quest.days.map(d=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}</span>}</h3>
                                                 <div className="flex flex-wrap gap-2 mt-1">
                                                     <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase bg-yellow-500/10 text-yellow-500">+{quest.xp} XP</span>
                                                     <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase bg-emerald-500/10 text-emerald-500">+{quest.gems || 0} Gems</span>
@@ -2215,7 +2345,7 @@
                                     <div key={ach.id + ach.userName} className="flex items-center gap-4 bg-slate-950/50 p-3 rounded-2xl border border-slate-800/50 relative group">
                                         <div className="text-2xl">{ach.userAvatar}</div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-bold text-white truncate"><span className="text-yellow-500">{ach.userName}</span> {ach.type === 'achievement' ? ach.message : 'leveled up!'}</p>
+                                            <p className="text-xs font-bold text-white truncate"><span className="text-yellow-500">{ach.userName}</span> {ach.message}</p>
                                             <p className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">{new Date(ach.timestamp).toLocaleDateString()}</p>
                                         </div>
                                         <Icon name="chevrons-up" size={16} className="text-yellow-500 animate-bounce"/>
@@ -2338,6 +2468,23 @@
                         </div>
                     )}
 
+                    {confirmSellItem && (
+                        <div className="fixed inset-0 z-[110] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setConfirmSellItem(null)}>
+                            <div className="bg-slate-800 p-6 rounded-3xl border-2 border-orange-500 w-full max-w-sm shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                                <h3 className="text-xl font-black text-orange-400 uppercase italic mb-4 text-center">Confirm Sale</h3>
+                                <p className="text-slate-300 text-center mb-6">Are you sure you want to sell the legendary item <span className="font-bold">{confirmSellItem.text}</span> for {confirmSellItem.value} Gems?</p>
+                                <div className="flex gap-3">
+                                    <button onClick={() => {
+                                        handleSellItem(activeUser.id, confirmSellItem);
+                                        setConfirmSellItem(null);
+                                    }} className="flex-1 py-3 bg-red-600 rounded-xl text-white font-bold uppercase hover:bg-red-500">Yes, Sell</button>
+                                    <button onClick={() => setConfirmSellItem(null)} className="flex-1 py-3 bg-slate-700 rounded-xl text-white font-bold uppercase hover:bg-slate-600">No, Keep</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+
                     {selectedInventoryItem && (
                         <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setSelectedInventoryItem(null)}>
                             <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 w-full max-w-sm shadow-2xl animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
@@ -2347,7 +2494,14 @@
                                 </div>
                                 <p className="text-center text-slate-300 mb-6">Value: <span className="text-emerald-400 font-black">{selectedInventoryItem.value} Gems</span></p>
                                 <div className="flex gap-3">
-                                    <button onClick={() => handleSellItem(activeUser.id, selectedInventoryItem)} className={`flex-1 py-3 rounded-xl font-black uppercase transition-all ${selectedInventoryItem.value > 0 ? 'bg-emerald-600 text-white hover:bg-emerald-500' : 'bg-red-600 text-white hover:bg-red-500'}`}>
+                                    <button onClick={() => {
+                                        if (selectedInventoryItem.rarity === 'legendary') {
+                                            setConfirmSellItem(selectedInventoryItem);
+                                            setSelectedInventoryItem(null);
+                                        } else {
+                                            handleSellItem(activeUser.id, selectedInventoryItem);
+                                        }
+                                    }} className={`flex-1 py-3 rounded-xl font-black uppercase transition-all ${selectedInventoryItem.value > 0 ? 'bg-emerald-600 text-white hover:bg-emerald-500' : 'bg-red-600 text-white hover:bg-red-500'}`}>
                                         {selectedInventoryItem.value > 0 ? 'Sell' : 'Discard'}
                                     </button>
                                     <button onClick={() => { setTradeConfig({ isOpen: true, item: selectedInventoryItem, targetId: "", price: 0 }); setSelectedInventoryItem(null); }} className="flex-1 py-3 bg-blue-600 rounded-xl text-white font-bold uppercase hover:bg-blue-500">Trade</button>
@@ -2507,6 +2661,56 @@
                                         <button onClick={handleAddAchievement} className="flex-1 bg-yellow-500 text-slate-900 py-3 rounded-xl font-black uppercase hover:bg-yellow-400">Award</button>
                                         <button onClick={() => setAchievementState({ isOpen: false, userId: "", text: "" })} className="flex-1 bg-slate-700 text-white py-3 rounded-xl font-black uppercase hover:bg-slate-600">Cancel</button>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activityLogUser && (
+                        <div className="fixed inset-0 z-[130] bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setActivityLogUser(null)}>
+                            <div className="bg-slate-800 p-6 rounded-3xl border border-slate-700 w-full max-w-lg shadow-2xl animate-in zoom-in-95 flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-xl font-black text-white uppercase italic tracking-tighter flex items-center gap-2">
+                                        <span className="text-3xl">{activityLogUser.avatar}</span> {activityLogUser.name}'s Log
+                                    </h3>
+                                    <button onClick={() => setActivityLogUser(null)} className="p-2 bg-slate-700 rounded-full text-slate-400 hover:text-white"><Icon name="x" size={20}/></button>
+                                </div>
+                                <div className="flex bg-slate-900 p-1 rounded-xl mb-4 border border-slate-700">
+                                    {['all', 'quests', 'transactions'].map(f => (
+                                        <button key={f} onClick={() => setActivityLogFilter(f)} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${activityLogFilter === f ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}>
+                                            {f}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="overflow-y-auto pr-2 space-y-2 flex-1">
+                                    {(() => {
+                                        const userHistory = (activityLogUser.history || []).map(h => ({ ...h, type: 'quest', timestamp: h.timestamp }));
+                                        const userTx = transactions.filter(t => t.userId === activityLogUser.id).map(t => ({ ...t, type: 'transaction', timestamp: t.date }));
+                                        
+                                        let combined = [];
+                                        if (activityLogFilter === 'all') combined = [...userHistory, ...userTx];
+                                        else if (activityLogFilter === 'quests') combined = userHistory;
+                                        else if (activityLogFilter === 'transactions') combined = userTx;
+                                        
+                                        combined.sort((a, b) => b.timestamp - a.timestamp);
+                                        
+                                        if (combined.length === 0) return <div className="text-center text-slate-500 italic py-8">No activity recorded yet.</div>;
+
+                                        return combined.map((item, idx) => (
+                                            <div key={item.id + '_' + idx} className="bg-slate-900 p-3 rounded-xl border border-slate-700 flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3 overflow-hidden">
+                                                    <div className={`p-2 rounded-lg ${item.type === 'quest' ? 'bg-blue-600/20 text-blue-400' : 'bg-emerald-600/20 text-emerald-400'}`}>
+                                                        <Icon name={item.type === 'quest' ? 'check-circle' : 'shopping-bag'} size={16}/>
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-white text-sm truncate">{item.type === 'quest' ? item.task : item.item}</p>
+                                                        <p className="text-[10px] text-slate-500 uppercase">{new Date(item.timestamp).toLocaleString()}</p>
+                                                    </div>
+                                                </div>
+                                                <span className={`text-xs font-black whitespace-nowrap ${item.type === 'quest' ? 'text-yellow-500' : 'text-emerald-500'}`}>{item.type === 'quest' ? `+${item.xp} XP` : item.cost !== 0 ? `${item.cost > 0 ? '-' : '+'}${Math.abs(item.cost)} Gems` : ''}</span>
+                                            </div>
+                                        ));
+                                    })()}
                                 </div>
                             </div>
                         </div>
@@ -2685,6 +2889,7 @@
                                                             <div className="ml-auto flex gap-1">
                                                                 <button onClick={() => editUser(u.id, u.name)} className="p-2 bg-slate-800 rounded-lg text-slate-400 hover:text-white"><Icon name="edit-2" size={14}/></button>
                                                                 <button onClick={() => u.isDeactivated ? handleReactivateUser(u.id) : handleDeactivateUser(u.id)} className={`p-2 bg-slate-800 rounded-lg ${u.isDeactivated ? 'text-emerald-500' : 'text-red-500'} hover:bg-slate-700`}><Icon name={u.isDeactivated ? "user-check" : "user-x"} size={14}/></button>
+                                                                <button onClick={() => { setActivityLogUser(u); setActivityLogFilter('all'); }} className="p-2 bg-slate-800 rounded-lg text-blue-400 hover:text-white hover:bg-blue-600 transition-colors" title="View Activity Log"><Icon name="list" size={14}/></button>
                                                             </div>
                                                         </div>
                                                         <div className="grid grid-cols-2 gap-2 text-xs">
@@ -2725,7 +2930,7 @@
                                                             <div className="text-2xl">{ach.userAvatar}</div>
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-xs font-bold text-white truncate"><span className="text-yellow-500">{ach.userName}</span></p>
-                                                                <p className="text-[10px] text-slate-400 truncate">{ach.type === 'achievement' ? ach.message : 'Leveled Up!'}</p>
+                                                                <p className="text-[10px] text-slate-400 truncate">{ach.message}</p>
                                                             </div>
                                                             <button onClick={() => deleteAchievement(ach.userId, ach.id)} className="p-2 bg-slate-800 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-colors"><Icon name="trash-2" size={14}/></button>
                                                         </div>
@@ -2824,6 +3029,15 @@
                                     {parentTab === 'quests' && (
                                         <div className="bg-slate-900/50 p-6 rounded-3xl border border-slate-700">
                                             <h4 className="text-sm font-black text-yellow-500 mb-6 uppercase italic tracking-tighter">Quest Master Editor</h4>
+                                            
+                                            <div className="mb-6 bg-slate-800 p-3 rounded-xl border border-slate-700">
+                                                <label className="text-[9px] font-black text-slate-500 uppercase block mb-2 tracking-widest">Load Template</label>
+                                                <select onChange={(e) => { const t = QUEST_TEMPLATES[e.target.value]; if(t) setNewQuest({...newQuest, ...t, id: newQuest.id}); }} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-bold text-white outline-none">
+                                                    <option value="">Select a template to auto-fill...</option>
+                                                    {QUEST_TEMPLATES.map((t, i) => <option key={i} value={i}>{t.icon} {t.task}</option>)}
+                                                </select>
+                                            </div>
+
                                             <form onSubmit={addOrUpdateQuest} className="space-y-6">
                                                 <input readOnly onClick={() => openKeyboard('text', newQuest.task, 'Mission Name', (val) => setNewQuest({...newQuest, task: val}))} value={newQuest.task} placeholder="Epic Mission Name..." className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-6 py-4 font-bold outline-none focus:border-yellow-500 text-white shadow-inner cursor-pointer" />
                                                 <div>
@@ -2844,19 +3058,35 @@
                                                 <div>
                                                     <label className="text-[10px] font-black text-slate-500 uppercase block mb-2 px-2 tracking-[0.2em]">Loot Drop Config</label>
                                                     <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-inner space-y-3">
-                                                        <input readOnly onClick={() => openKeyboard('text', newQuest.loot || "", 'Loot Name', (val) => setNewQuest({...newQuest, loot: val}))} value={newQuest.loot || ""} placeholder="Item Name (e.g. Golden Cookie)" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 font-bold outline-none focus:border-emerald-500 text-emerald-400 text-sm" />
-                                                        <div className="flex gap-2">
-                                                            <select value={newQuest.lootRarity || 'common'} onChange={e => setNewQuest({...newQuest, lootRarity: e.target.value})} className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-xs font-bold text-white uppercase outline-none flex-1">
-                                                                <option value="common">Common (Grey)</option>
-                                                                <option value="rare">Rare (Blue)</option>
-                                                                <option value="epic">Epic (Purple)</option>
-                                                                <option value="legendary">Legendary (Orange)</option>
-                                                            </select>
-                                                            <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-2 flex-1">
-                                                                <Icon name="gem" size={12} className="text-emerald-500"/>
-                                                                <input type="number" value={newQuest.lootValue || 0} onChange={e => setNewQuest({...newQuest, lootValue: parseInt(e.target.value) || 0})} className="bg-transparent w-full py-2 text-xs font-bold text-white outline-none" placeholder="Value" />
-                                                            </div>
+                                                        <div className="flex bg-slate-900 p-1 rounded-lg mb-2">
+                                                            <button type="button" onClick={() => setNewQuest({...newQuest, lootPoolRarity: ""})} className={`flex-1 py-1.5 text-[10px] font-bold uppercase rounded transition-all ${!newQuest.lootPoolRarity ? 'bg-emerald-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>Specific Item</button>
+                                                            <button type="button" onClick={() => setNewQuest({...newQuest, lootPoolRarity: "common"})} className={`flex-1 py-1.5 text-[10px] font-bold uppercase rounded transition-all ${newQuest.lootPoolRarity ? 'bg-purple-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}>Random Pool</button>
                                                         </div>
+                                                        
+                                                        {!newQuest.lootPoolRarity ? (
+                                                            <div className="space-y-3 animate-in fade-in">
+                                                                <input readOnly onClick={() => openKeyboard('text', newQuest.loot || "", 'Loot Name', (val) => setNewQuest({...newQuest, loot: val}))} value={newQuest.loot || ""} placeholder="Item Name (e.g. Golden Cookie)" className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 font-bold outline-none focus:border-emerald-500 text-emerald-400 text-sm" />
+                                                                <div className="flex gap-2">
+                                                                    <select value={newQuest.lootRarity || 'common'} onChange={e => setNewQuest({...newQuest, lootRarity: e.target.value})} className="bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-xs font-bold text-white uppercase outline-none flex-1">
+                                                                        <option value="common">Common</option>
+                                                                        <option value="rare">Rare</option>
+                                                                        <option value="epic">Epic</option>
+                                                                        <option value="legendary">Legendary</option>
+                                                                    </select>
+                                                                    <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-lg px-2 flex-1">
+                                                                        <Icon name="gem" size={12} className="text-emerald-500"/>
+                                                                        <input type="number" value={newQuest.lootValue || 0} onChange={e => setNewQuest({...newQuest, lootValue: parseInt(e.target.value) || 0})} className="bg-transparent w-full py-2 text-xs font-bold text-white outline-none" placeholder="Value" />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="animate-in fade-in">
+                                                                <select value={newQuest.lootPoolRarity} onChange={e => setNewQuest({...newQuest, lootPoolRarity: e.target.value})} className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-3 text-sm font-bold text-purple-400 uppercase outline-none">
+                                                                    {Object.keys(LOOT_TABLES).map(r => <option key={r} value={r}>{r} Loot Pool</option>)}
+                                                                </select>
+                                                                <p className="text-[10px] text-slate-500 mt-2 italic">Award a random item from the {newQuest.lootPoolRarity} table upon completion.</p>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <div>
@@ -2914,10 +3144,33 @@
                                                     </button>
                                                 </div>
                                                 <div className="flex gap-3">
+                                                    {editingQuestId && <button type="button" onClick={cancelEditQuest} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black uppercase italic text-lg shadow-xl hover:bg-red-500 active:scale-95 transition-all">Cancel</button>}
                                                     <button type="button" onClick={() => setPreviewItem({ type: 'quest', data: newQuest })} className="flex-1 bg-slate-700 text-white py-4 rounded-2xl font-black uppercase italic text-lg shadow-xl hover:bg-slate-600 active:scale-95 transition-all">Preview</button>
                                                     <button className="flex-[2] bg-yellow-500 text-slate-900 py-4 rounded-2xl font-black uppercase italic text-lg shadow-xl hover:bg-yellow-400 active:scale-95 transition-all">{editingQuestId ? 'Confirm Update' : 'Forge Mission'}</button>
                                                 </div>
                                             </form>
+
+                                            <div className="mt-12 pt-8 border-t border-slate-700">
+                                                <h4 className="text-sm font-black text-slate-400 mb-4 uppercase italic tracking-tighter">Mission Library</h4>
+                                                <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                                                    {[...quests].sort((a,b) => a.task.localeCompare(b.task)).map(quest => (
+                                                        <div key={quest.id} className="bg-slate-800 p-3 rounded-xl flex justify-between items-center border border-slate-700">
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div className="text-2xl flex-shrink-0 w-8 h-8 flex items-center justify-center">{quest.icon?.startsWith('data:') ? <img src={quest.icon} className="w-8 h-8 object-contain" alt="icon"/> : quest.icon}</div>
+                                                                <div className="min-w-0">
+                                                                    <p className="font-bold text-white truncate text-sm">{quest.task}</p>
+                                                                    <p className="text-[9px] text-slate-500 uppercase font-bold">{(!quest.days || quest.days.length===0) ? "Every Day" : quest.days.map(d=>['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ')}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex gap-1 flex-shrink-0">
+                                                                <button onClick={() => editQuest(quest)} className="p-2 bg-yellow-600/20 text-yellow-500 rounded-lg hover:bg-yellow-600/30 transition-colors"><Icon name="edit" size={16}/></button>
+                                                                <button onClick={() => deleteQuest(quest.id)} className="p-2 bg-red-600/20 text-red-500 rounded-lg hover:bg-red-600/30 transition-colors"><Icon name="trash-2" size={16}/></button>
+                                                                <button onClick={() => cloneQuest(quest)} className="p-2 bg-blue-600/20 text-blue-500 rounded-lg hover:bg-blue-600/30 transition-colors" title="Clone Quest"><Icon name="copy" size={16}/></button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
 
@@ -3029,6 +3282,7 @@
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-3">
+                                                    {editingRewardId && <button type="button" onClick={cancelEditReward} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black uppercase italic text-lg shadow-xl hover:bg-red-500 active:scale-95 transition-all">Cancel</button>}
                                                     <button type="button" onClick={() => setPreviewItem({ type: 'reward', data: newReward })} className="flex-1 bg-slate-700 text-white py-4 rounded-2xl font-black uppercase italic text-lg shadow-xl hover:bg-slate-600 active:scale-95 transition-all">Preview</button>
                                                     <button className="flex-[2] bg-blue-500 text-white py-4 rounded-2xl font-black uppercase italic text-lg shadow-xl hover:bg-blue-400 active:scale-95 transition-all">{editingRewardId ? 'Confirm Update' : 'Manifest Loot'}</button>
                                                 </div>
@@ -3122,35 +3376,37 @@
                                                         </div>
                                                     </div>
                                                     <div className="flex gap-3">
+                                                        {editingRewardId && <button type="button" onClick={cancelEditReward} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black uppercase italic text-lg shadow-xl hover:bg-red-500 active:scale-95 transition-all">Cancel</button>}
                                                         <button type="button" onClick={() => setPreviewItem({ type: 'reward', data: newReward })} className="flex-1 bg-slate-700 text-white py-4 rounded-2xl font-black uppercase italic text-lg shadow-xl hover:bg-slate-600 active:scale-95 transition-all">Preview</button>
                                                         <button className="flex-[2] bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase italic text-lg shadow-xl hover:bg-emerald-500 active:scale-95 transition-all">{editingRewardId ? 'Update Store Item' : 'Add to Store'}</button>
                                                     </div>
                                                 </form>
                                             </div>
 
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                                {rewards.filter(r => r.type === 'shop').sort((a,b)=>a.cost-b.cost).map(reward => (
-                                                    <div key={reward.id} className="bg-slate-800 p-4 rounded-2xl border border-slate-700 shadow-lg flex flex-col justify-between gap-3 relative overflow-hidden">
-                                                        {reward.isFeatured && <div className="absolute top-0 right-0 bg-yellow-500 text-slate-900 text-[9px] font-black uppercase px-2 py-1 rounded-bl-xl z-10">Featured</div>}
-                                                        <div>
-                                                            <div className="flex justify-between items-start mb-1">
-                                                                <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded text-white bg-emerald-600">Shop</span>
-                                                                <span className="text-xs font-black text-emerald-400 flex items-center gap-1"><Icon name="gem" size={12}/> {reward.cost}</span>
-                                                            </div>
-                                                            <div className="flex items-center gap-3 mt-2">
-                                                                <div className="text-3xl filter drop-shadow-md">
-                                                                    {reward.icon?.startsWith('data:') ? <img src={reward.icon} className="w-10 h-10 object-contain" alt="icon"/> : (reward.icon || "🎁")}
+                                            <div className="mt-12 pt-8 border-t border-slate-700">
+                                                <h4 className="text-sm font-black text-slate-400 mb-4 uppercase italic tracking-tighter">Store Inventory</h4>
+                                                <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                                                    {[...rewards].filter(r => r.type === 'shop').sort((a,b) => (a.category || "zzz").localeCompare(b.category || "zzz") || a.cost - b.cost).map(reward => (
+                                                        <div key={reward.id} className="bg-slate-800 p-3 rounded-xl flex justify-between items-center border border-slate-700">
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div className="text-2xl flex-shrink-0 w-8 h-8 flex items-center justify-center">{reward.icon?.startsWith('data:') ? <img src={reward.icon} className="w-8 h-8 object-contain" alt="icon"/> : reward.icon}</div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="font-bold text-white truncate">{reward.title}</p>
+                                                                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                                                                        <span className="text-emerald-400 font-bold">{reward.cost} Gems</span>
+                                                                        <span>•</span>
+                                                                        <span>{reward.category || 'General'}</span>
+                                                                    </div>
                                                                 </div>
-                                                                <p className="font-bold text-white tracking-tight leading-tight">{reward.title}</p>
+                                                            </div>
+                                                            <div className="flex gap-1 flex-shrink-0">
+                                                                <button onClick={() => editReward(reward)} className="p-2 bg-yellow-600/20 text-yellow-500 rounded-lg hover:bg-yellow-600/30 transition-colors"><Icon name="edit" size={16}/></button>
+                                                                <button onClick={() => deleteReward(reward.id)} className="p-2 bg-red-600/20 text-red-500 rounded-lg hover:bg-red-600/30 transition-colors"><Icon name="trash-2" size={16}/></button>
+                                                                <button onClick={() => cloneReward(reward)} className="p-2 bg-blue-600/20 text-blue-500 rounded-lg hover:bg-blue-600/30 transition-colors" title="Clone Item"><Icon name="copy" size={16}/></button>
                                                             </div>
                                                         </div>
-                                                        <div className="flex gap-1">
-                                                            <button onClick={()=>editReward(reward)} className="flex-1 py-1.5 bg-yellow-500/10 text-yellow-500 rounded-lg text-[10px] font-black uppercase border border-yellow-500/20 hover:bg-yellow-500/20 transition-all">Edit</button>
-                                                            <button onClick={()=>deleteReward(reward.id)} className="flex-1 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-[10px] font-black uppercase border border-red-500/20 hover:bg-red-500/20 transition-all">Del</button>
-                                                            <button onClick={()=>cloneReward(reward)} className="flex-1 py-1.5 bg-blue-600/20 text-blue-500 rounded-lg text-[10px] font-black uppercase border border-blue-500/20 hover:bg-blue-600/30 transition-all">Clone</button>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
                                     )}
